@@ -29,6 +29,10 @@ public:
     SdDriver() : currentMp3Index(0) {}
     bool Init() { return readSDFiles(); }
 
+    /**
+     * Reads all file names from sd card and stores in sdFiles vector
+     * @return
+     */
     bool readSDFiles();
     void setNextSong();
 
@@ -36,10 +40,23 @@ public:
 
     char * getCurrentFileName() { return sdFiles[currentMp3Index].fileName; }
 
-    bool findFile(const char * fileName);
+    /**
+     * Set file index based on filename in parameter
+     * @param fileName
+     */
+    void setFileIndex(const char * fileName);
 
+    /**
+     * Print all mp3 names
+     */
     void printMp3Names();
 
+    /**
+     * friend function for checking extensions of given filename compared with literal extension
+     * @param fileName
+     * @param ext
+     * @return
+     */
     friend bool checkExtension(const char * fileName, const char * ext);
 };
 
@@ -49,11 +66,11 @@ inline bool checkExtension(const char * fileName, const char * ext) {
 
     if (isupper(extension[1])) {
         for (unsigned int i = 1; i < strlen(extension); i++) {
-            extension[i] = (char) tolower(extension[i]);
+            extension[i] = (char)tolower(extension[i]);
         };
     }
 
-    return strncmp(ext, extension, strlen(extension)) == 0;
+    return strcmp(ext, extension) == 0;
 }
 
 inline void SdDriver::setNextSong() {
@@ -73,14 +90,12 @@ inline void SdDriver::printMp3Names() {
         if (checkExtension(file.fileName, ".mp3")) u0_dbg_printf("%s\n", file.fileName);
 }
 
-inline bool SdDriver::findFile(const char * fileName) {
+inline void SdDriver::setFileIndex(const char * fileName) {
     for (uint8_t i = 0; i < sdFiles.size(); i++) {
-        if (strncmp(fileName, sdFiles[i].fileName, strlen(sdFiles[i].fileName)) == 0) {
+        if (strcmp(fileName, sdFiles[i].fileName) == 0) {
             currentMp3Index = i;
-            return true;
         }
     }
-    return false;
 }
 
 #endif //SDDRIVER_H

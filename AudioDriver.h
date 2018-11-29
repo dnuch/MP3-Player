@@ -55,8 +55,12 @@ public:
      * @param buffer
      * @param length
      */
-    void SDI_W(uint8_t * buffer, int length);
+    void SDI_W(const uint8_t * buffer, int length);
 
+    /**
+     * When DREQ is low, that means audio co-processing unit 2048 FIFO is full
+     * @return
+     */
     bool getDREQ() { return DREQ.getLevel(); };
 
     /**
@@ -70,8 +74,8 @@ private:
      * @Control_Signals (X indicative of active low)
      *  @output
      *  XCS  - Send Command (Active Low) P0.29
-     *  XDCS - Send Data (Active Low)    P0.30
-     *  XRST - Reset (Active Low)        P0.0
+     *  XDCS - Send Data    (Active Low) P0.30
+     *  XRST - Reset        (Active Low) P0.0
      *  @input
      *  DREQ - Data Request              P0.1
      */
@@ -109,10 +113,10 @@ inline void AudioDriver::SCI_RW(AUDIO_OPCODE opcode, SCI_REGISTER address, uint1
     x_CS.setHigh();
     // wait until DREQ is high
     while (!DREQ.getLevel());
-    u0_dbg_printf("Received: 0x%x\n", (d[2] << 8) | d[3]);
+    u0_dbg_printf("SPI Received: 0x%x\n", (d[2] << 8) | d[3]);
 }
 
-inline void AudioDriver::SDI_W(uint8_t * buffer, int length) {
+inline void AudioDriver::SDI_W(const uint8_t * buffer, int length) {
     // wait until DREQ is high
     while (!DREQ.getLevel());
     x_DCS.setLow();

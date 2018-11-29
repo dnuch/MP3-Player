@@ -20,8 +20,7 @@ SemaphoreHandle_t startMp3Handle;
  *  fill vPlayMp3FilesFromCmd/vPlayTxtFilesFromCmd queue
  */
 
-void vSendFilesFromCmd(void * pvParameter) {
-    auto * sd = (SdDriver *)pvParameter;
+void vSendFilesFromCmd(void *) {
     FRESULT res;
     FIL fil;
     UINT br;
@@ -32,20 +31,28 @@ void vSendFilesFromCmd(void * pvParameter) {
     QueueHandle_t toCmdTask;
 
     for (;;) {
-        xQueueReceive(sdFileCmdTaskHandle, &fileNamePtr, portMAX_DELAY); /* wait on 'play' command */
-
+        xQueueReceive(sdFileCmdTaskHandle, &fileNamePtr, portMAX_DELAY);        /* wait on 'play' command */
         res = f_open(&fil, fileNamePtr, FA_OPEN_EXISTING | FA_READ);
         if (res == FR_OK) {
-            checkExtension(sd->getCurrentFileName(), ".mp3") ? toCmdTask = mp3CmdTaskHandle /* check .mp3/.txt */
-                                                             : toCmdTask = txtCmdTaskHandle;
-            for (;;) {                                              /* playing current song */
-                res = f_read(&fil, buffer, sizeof(buffer), &br);    /* read file from mp3File vector */
+            checkExtension(fileNamePtr, ".mp3") ? toCmdTask = mp3CmdTaskHandle  /* check .mp3/.txt */
+                                                : toCmdTask = txtCmdTaskHandle;
+
+            for (;;) {   /* playing current song */
+
+                // stop song and play next song on another 'play' command received
+                if (uxQueueSpacesAvailable(sdFileCmdTaskHandle) == 0) {  /* received another item from queue */
+                    memset(buffer, 0, sizeof(buffer));                   /* empty buffer */
+                    break;
+                }
+
+                res = f_read(&fil, buffer, sizeof(buffer), &br);    /* read file from queue */
                 if (res || br == 0) break;                          /* error or eof */
-                xQueueSendToBack(toCmdTask, &bufferProducer, portMAX_DELAY);
+                xQueueSend(toCmdTask, &bufferProducer, portMAX_DELAY);
             }
-            u0_dbg_put("finish song\n");
+            f_close(&fil);
+            u0_dbg_put("\nfile done sending\n");
         } else {
-            u0_dbg_put("ERROR: file not found\n");
+            u0_dbg_printf("\nERROR: %s not found\n", &fileNamePtr[2]);
         }
     }
 }
@@ -58,11 +65,11 @@ void vSendFilesFromCmd(void * pvParameter) {
 
 void vPlayMp3FilesFromCmd(void * pvParameter) {
     auto * audio = (AudioDriver *)pvParameter;
-    uint8_t * bufferConsumer;
-    const uint16_t bufferSize = 512;
+    const uint8_t * bufferConsumer;
+    const uint16_t BUFFER_SIZE = 512;
     for (;;) {
         xQueueReceive(mp3CmdTaskHandle, &bufferConsumer, portMAX_DELAY);
-        audio->SDI_W(bufferConsumer, bufferSize);
+        audio->SDI_W(bufferConsumer, BUFFER_SIZE);
     }
 }
 
@@ -72,25 +79,22 @@ void vPlayMp3FilesFromCmd(void * pvParameter) {
  */
 
 void vPlayTxtFilesFromCmd(void *) {
-    uint8_t * bufferConsumer;
-    const uint16_t bufferSize = 512;
+    const char * bufferConsumer;
     for (;;) {
         xQueueReceive(txtCmdTaskHandle, &bufferConsumer, portMAX_DELAY);
-        for (uint16_t i = 0; i < bufferSize; i++) {
-            u0_dbg_printf("%x", bufferConsumer[i]);
-        }
+        u0_dbg_printf("%s", bufferConsumer);
     }
 }
 
 /** vSendMp3Files Task, @Priority = Low
- *  @resumes from button semaphore
- *  send current mp3 file and
+ *  @resumes from button isr
+ *  send current mp3 file pointed and
  *  fill vReadMp3File queue,
  *  automatically goes to next song in vector
  */
 
 void vSendMp3Files(void * pvParameter) {
-    auto * sd = (SdDriver *)pvParameter;
+    auto * const sd = (SdDriver *)pvParameter;
     FRESULT res;
     FIL fil;
     UINT br;
@@ -98,16 +102,17 @@ void vSendMp3Files(void * pvParameter) {
     uint8_t buffer[512];
     uint8_t * const bufferProducer = buffer;
 
-    for (;;) {
-        xSemaphoreTake(startMp3Handle, portMAX_DELAY); /* wait on button semaphore signal */
+    xSemaphoreTake(startMp3Handle, portMAX_DELAY); /* wait on button semaphore signal from isr */
 
+    for (;;) {
         res = f_open(&fil, sd->getCurrentFileName(), FA_OPEN_EXISTING | FA_READ);
         if (res == FR_OK) {
             for (;;) {                                              /* playing current song */
-                res = f_read(&fil, buffer, sizeof(buffer), &br);    /* read file from mp3File vector */
+                res = f_read(&fil, buffer, sizeof(buffer), &br);    /* read file from sdFile vector */
                 if (res || br == 0) break;                          /* error or eof */
-                xQueueSendToBack(mp3QueueHandle, &bufferProducer, portMAX_DELAY); /* fill producer queue */
+                xQueueSend(mp3QueueHandle, &bufferProducer, portMAX_DELAY); /* fill producer queue */
             }
+            f_close(&fil);
             sd->setNextSong();
             u0_dbg_printf("finished song\n");
         }
@@ -119,8 +124,9 @@ void vSendMp3Files(void * pvParameter) {
  *  audio decodes 512 byte mp3 blocks
  *  and encodes as music
  */
+
 void vPlayMp3Files(void * pvParameter) {
-    auto * audio = (AudioDriver *)pvParameter;
+    auto * const audio = (AudioDriver *)pvParameter;
     uint8_t * bufferConsumer;
     const uint16_t bufferSize = 512;
     for (;;) {
@@ -132,16 +138,18 @@ void vPlayMp3Files(void * pvParameter) {
 int main(void) {
     /// This "stack" memory is enough for each task to run properly (512 * 32-bit (4 bytes)) = 2Kbytes stack
     const uint32_t STACK_SIZE_WORDS = 0x00000200;
-    auto * sd = new SdDriver();
-    auto * audio = new AudioDriver();
+
+    auto * const sd = new SdDriver();
+    auto * const audio = new AudioDriver();
     assert(sd->Init() && audio->Init());
 
+    /// command line queue handles
     sdFileCmdTaskHandle = xQueueCreate(1, sizeof(uint8_t *));
     mp3CmdTaskHandle = xQueueCreate(2, sizeof(uint8_t *));
     txtCmdTaskHandle = xQueueCreate(2, sizeof(uint8_t *));
 
+    /// isr semaphore/queue handles
     startMp3Handle = xSemaphoreCreateBinary();
-
     mp3QueueHandle = xQueueCreate(2, sizeof(uint8_t *));
 
 
@@ -150,7 +158,7 @@ int main(void) {
     /// command line handled tasks
     xTaskCreate(vPlayMp3FilesFromCmd, "cmp3task", STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
     xTaskCreate(vPlayTxtFilesFromCmd, "ctxttask", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
-    xTaskCreate(vSendFilesFromCmd,    "pmp3task", STACK_SIZE_WORDS, sd,      PRIORITY_LOW,  nullptr);
+    xTaskCreate(vSendFilesFromCmd,    "pmp3task", STACK_SIZE_WORDS, nullptr, PRIORITY_LOW,  nullptr);
 
     /// isr handled tasks
     xTaskCreate(vPlayMp3Files,        "cmp3",     STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);

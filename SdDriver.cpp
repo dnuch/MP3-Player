@@ -28,14 +28,14 @@ bool SdDriver::readSDFiles() {
                 if (checkExtension(fno.fname, ".mp3") ||          /* is mp3/txt file */
                     checkExtension(fno.fname, ".txt")) {
                     strcpy(filename, path);
-                    strncat(filename, fno.fname, strlen(fno.fname));
+                    strcat(filename, fno.fname);
 
                     u0_dbg_printf("%s size: %lu bytes\n", filename, fno.fsize);
 
-                    res = f_open(&fil, filename, FA_OPEN_EXISTING | FA_READ);   /* open found mp3 file */
+                    res = f_open(&fil, filename, FA_OPEN_EXISTING | FA_READ);    /* open found mp3 file */
                     if (res == FR_OK) {
                         strcpy(sdFile.fileName, filename);
-                        sdFiles.push_back(sdFile);                                /* fill mp3 vector array */
+                        sdFiles.push_back(sdFile);                               /* fill mp3 vector array */
                         f_close(&fil);
                     }
                 }
