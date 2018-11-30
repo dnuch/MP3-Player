@@ -29,7 +29,7 @@ enum SCI_REGISTER {
     HDAT0,
     HDAT1,
     AIADDR,
-    VOL,
+    VOL,            // 0x0000 (max); 0xFEFE (silence)
     AICTRL0,
     AICTRL1,
     AICTRL2,
@@ -47,8 +47,9 @@ public:
      * @param opcode
      * @param address
      * @param data
+     * @return 16 byte message
      */
-    void SCI_RW(AUDIO_OPCODE opcode, SCI_REGISTER address, uint16_t data = 0xA5A5);
+    uint16_t SCI_RW(AUDIO_OPCODE opcode, SCI_REGISTER address, uint16_t data = 0xA5A5);
 
     /**
      * Serial Data In write
@@ -69,6 +70,9 @@ public:
      * @param sineSkipSpeed
      */
     void sineTest(uint8_t sampleRate, uint8_t sineSkipSpeed);
+
+    void incrementVolume();
+    void decrementVolume();
 private:
     /**
      * @Control_Signals (X indicative of active low)
@@ -91,6 +95,22 @@ private:
      *  SCK0  - SPI Clock Signal
      */
     SpiDriver spi;
+
+    SemaphoreHandle_t audioControlDataLock;
+
+    enum VOLUME_LEVEL {
+        MAX_VOLUME_LEVEL = 5,
+
+        VOL_FIVE  = 0x2020,   // max
+        VOL_FOUR  = 0x3030,
+        VOL_THREE = 0x4040,
+        VOL_TWO   = 0x5050,
+        VOL_ONE   = 0x6060,
+        VOL_ZERO  = 0xFEFE    // silence
+    };
+
+    uint8_t volumeLevel;
+
 };
 
 inline void AudioDriver::resetAudioDecoder() {
@@ -99,10 +119,11 @@ inline void AudioDriver::resetAudioDecoder() {
     x_RST.setHigh();
 }
 
-inline void AudioDriver::SCI_RW(AUDIO_OPCODE opcode, SCI_REGISTER address, uint16_t data) {
+inline uint16_t AudioDriver::SCI_RW(AUDIO_OPCODE opcode, SCI_REGISTER address, uint16_t data) {
     uint8_t d[4];
     // wait until DREQ is high
-    while (!DREQ.getLevel());
+    xSemaphoreTake(audioControlDataLock, portMAX_DELAY);
+    while (!getDREQ());
     x_CS.setLow();
     {
         d[0] = spi.transfer_spi0(opcode);
@@ -112,24 +133,62 @@ inline void AudioDriver::SCI_RW(AUDIO_OPCODE opcode, SCI_REGISTER address, uint1
     }
     x_CS.setHigh();
     // wait until DREQ is high
-    while (!DREQ.getLevel());
-    u0_dbg_printf("SPI Received: 0x%x\n", (d[2] << 8) | d[3]);
+    while (!getDREQ());
+    xSemaphoreGive(audioControlDataLock);
+
+    u0_dbg_printf("SPI0 Received: 0x%x\n", (d[2] << 8) | d[3]);
+    return (d[2] << 8) | d[3];
 }
 
 inline void AudioDriver::SDI_W(const uint8_t * buffer, int length) {
     // wait until DREQ is high
-    while (!DREQ.getLevel());
+    xSemaphoreTake(audioControlDataLock, portMAX_DELAY);
+    while (!getDREQ());
     x_DCS.setLow();
     {
         for (int i = 0; i < length; i++) {
-            while (!DREQ.getLevel());
+            while (!getDREQ());
             spi.transfer_spi0(buffer[i]);
         }
     }
     x_DCS.setHigh();
     // wait until DREQ is high
-    while (!DREQ.getLevel());
+    while (!getDREQ());
+    xSemaphoreGive(audioControlDataLock);
 }
 
+inline void AudioDriver::incrementVolume() {
+    uint16_t vol = 0x0000;
+
+    if (volumeLevel != MAX_VOLUME_LEVEL) {
+        switch (volumeLevel) {
+            case 0:  vol = VOL_ONE;   break;
+            case 1:  vol = VOL_TWO;   break;
+            case 2:  vol = VOL_THREE; break;
+            case 3:  vol = VOL_FOUR;  break;
+            case 4:  vol = VOL_FIVE;  break;
+            default: vol = VOL_FOUR;
+        }
+        volumeLevel++;
+        SCI_RW(WRITE, VOL, vol);
+    }
+}
+
+inline void AudioDriver::decrementVolume() {
+    uint16_t vol = 0x0000;
+
+    if (volumeLevel != 0) {
+        switch (volumeLevel) {
+            case 5:  vol = VOL_FOUR;  break;
+            case 4:  vol = VOL_THREE; break;
+            case 3:  vol = VOL_TWO;   break;
+            case 2:  vol = VOL_ONE;   break;
+            case 1:  vol = VOL_ZERO;  break;
+            default: vol = VOL_FOUR;
+        }
+        volumeLevel--;
+        SCI_RW(WRITE, VOL, vol);
+    }
+}
 
 #endif //AUDIODRIVER_H

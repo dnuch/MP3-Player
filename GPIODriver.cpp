@@ -23,30 +23,3 @@ GPIODriver::GPIODriver(uint8_t port, uint8_t pin): pinByte(pin) {
             break;
     }
 }
-
-SemaphoreHandle_t xSemaphore[2][32];
-
-/*
-void vControlLED_2(void * pvParameters)
-{
-    auto * gpio = (gpioInit_t *)pvParameters;
-    GPIODriver led(gpio->port, gpio->pin);
-
-    // set as output & active high
-    led.setDirection(true);
-    led.set(true);
-    for (;;)
-    {
-//        uart0_puts("task");
-        // block task forever until given semaphore from respective SW interrupt
-        xSemaphoreTake(xSemaphore[gpio->port == 2 ? 1 : 0][gpio->pin], portMAX_DELAY);
-        // toggle LED for a second
-//        led.set(false);
-//        vTaskDelayMs(1000);
-//        led.set(true);
-        // toggle LED
-        led.getLevel() ? led.set(false) : led.set(true);
-//        vTaskDelayMs(100);
-    }
-}
-*/

@@ -20,6 +20,8 @@ bool AudioDriver::Init() {
     x_DCS.setHigh();
     x_RST.setHigh();
 
+    audioControlDataLock = xSemaphoreCreateMutex();
+
     resetAudioDecoder();
     while (!getDREQ());
 
@@ -43,7 +45,9 @@ bool AudioDriver::Init() {
 
     // init bass, volume(max) @ 0
     SCI_RW(WRITE, BASS, 0x0000);
-    SCI_RW(WRITE, VOL, 0x4444);
+
+    volumeLevel = 4;
+    SCI_RW(WRITE, VOL, VOL_FOUR);
 
     // stereo 44.1 KHz
 //    SCI_RW(WRITE, AUDATA, 0xAC45);

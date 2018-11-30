@@ -7,6 +7,7 @@
 
 #include "SdDriver.h"
 #include "AudioDriver.h"
+#include "InterruptHandler.h"
 
 // TODO shared global vars - find way to package
 QueueHandle_t mp3QueueHandle;
@@ -26,7 +27,7 @@ void vSendFilesFromCmd(void *) {
     UINT br;
 
     char * fileNamePtr;
-    uint8_t buffer[512];
+    uint8_t buffer[512]; // init as 0
     uint8_t * const bufferProducer = buffer;
     QueueHandle_t toCmdTask;
 
@@ -135,13 +136,31 @@ void vPlayMp3Files(void * pvParameter) {
     }
 }
 
+void vIncrementVolume(void * pvParameter) {
+    auto * audio = (AudioDriver *)pvParameter;
+    for (;;) {
+        xSemaphoreTake(xSemaphore[1][SW_P2_0], portMAX_DELAY);
+        audio->incrementVolume();
+        u0_dbg_put("vIn\n");
+    }
+}
+
+void vDecrementVolume(void * pvParameter) {
+    auto * audio = (AudioDriver *)pvParameter;
+    for (;;) {
+        xSemaphoreTake(xSemaphore[1][SW_P2_1], portMAX_DELAY);
+        audio->decrementVolume();
+        u0_dbg_put("vDe\n");
+    }
+}
+
 int main(void) {
     /// This "stack" memory is enough for each task to run properly (512 * 32-bit (4 bytes)) = 2Kbytes stack
     const uint32_t STACK_SIZE_WORDS = 0x00000200;
 
     auto * const sd = new SdDriver();
     auto * const audio = new AudioDriver();
-    assert(sd->Init() && audio->Init());
+    assert(sd->Init() && audio->Init() && Init_MP3_GPIO_Interrupts());
 
     /// command line queue handles
     sdFileCmdTaskHandle = xQueueCreate(1, sizeof(uint8_t *));
@@ -152,17 +171,19 @@ int main(void) {
     startMp3Handle = xSemaphoreCreateBinary();
     mp3QueueHandle = xQueueCreate(2, sizeof(uint8_t *));
 
-
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
 
     /// command line handled tasks
-    xTaskCreate(vPlayMp3FilesFromCmd, "cmp3task", STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
-    xTaskCreate(vPlayTxtFilesFromCmd, "ctxttask", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
-    xTaskCreate(vSendFilesFromCmd,    "pmp3task", STACK_SIZE_WORDS, nullptr, PRIORITY_LOW,  nullptr);
+    xTaskCreate(vPlayMp3FilesFromCmd, "cmp3cmd", STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
+    xTaskCreate(vPlayTxtFilesFromCmd, "ctxtcmd", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
+    xTaskCreate(vSendFilesFromCmd,    "pmp3cmd", STACK_SIZE_WORDS, nullptr, PRIORITY_LOW,  nullptr);
 
     /// isr handled tasks
-    xTaskCreate(vPlayMp3Files,        "cmp3",     STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
-    xTaskCreate(vSendMp3Files,        "pmp3",     STACK_SIZE_WORDS, sd,      PRIORITY_LOW,  nullptr);
+    xTaskCreate(vPlayMp3Files,        "cmp3",    STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
+    xTaskCreate(vSendMp3Files,        "pmp3",    STACK_SIZE_WORDS, sd,      PRIORITY_LOW,  nullptr);
+
+    xTaskCreate(vIncrementVolume,     "vinc",    STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
+    xTaskCreate(vDecrementVolume,     "vdec",    STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
 
     scheduler_start();
 

@@ -35,12 +35,8 @@ enum {
     SW3,
 
     // custom define LED/SWITCH on external GPIO ports 0 & 2
-    SW_P0_0 = 0,
-    SW_P0_1 = 1,
-    SW_P2_5 = 5,
-    SW_P2_6 = 6,
-    LED_P0_1 = 1,
-    LED_P2_6 = 6
+    SW_P2_0 = 0,
+    SW_P2_1 = 1
 };
 
 class GPIODriver
@@ -99,10 +95,5 @@ public:
      */
     bool getLevel() { return (LPC_GPIO->FIOPIN & (1 << pinByte)) != 0; };
 };
-
-// LED task function
-//extern void vControlLED_2(void * vParameters);
-// global semaphore for LED tasks
-extern SemaphoreHandle_t xSemaphore[2][32];
 
 #endif //GPIODRIVER_H
