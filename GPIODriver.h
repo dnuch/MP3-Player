@@ -36,7 +36,8 @@ enum {
 
     // custom define LED/SWITCH on external GPIO ports 0 & 2
     SW_P2_0 = 0,
-    SW_P2_1 = 1
+    SW_P2_1 = 1,
+    SW_P2_2 = 2
 };
 
 class GPIODriver

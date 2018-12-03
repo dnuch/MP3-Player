@@ -1,9 +1,6 @@
-#include <stdint.h>
-#include <stdio.h>
 //#define NDEBUG
 #include <cassert>
 #include <utilities.h>
-//#include "printf_lib.h"
 
 #include "SdDriver.h"
 #include "AudioDriver.h"
@@ -13,7 +10,6 @@
 QueueHandle_t mp3QueueHandle;
 QueueHandle_t mp3CmdTaskHandle;
 QueueHandle_t txtCmdTaskHandle;
-SemaphoreHandle_t startMp3Handle;
 
 /** vSendFilesFromCmd Task, @Priority = Low
  *  @resumes from terminal task 'play' command
@@ -21,7 +17,8 @@ SemaphoreHandle_t startMp3Handle;
  *  fill vPlayMp3FilesFromCmd/vPlayTxtFilesFromCmd queue
  */
 
-void vSendFilesFromCmd(void *) {
+void vSendFilesFromCmd(void * pvParameter) {
+    auto * audio = (AudioDriver *)pvParameter;
     FRESULT res;
     FIL fil;
     UINT br;
@@ -43,6 +40,7 @@ void vSendFilesFromCmd(void *) {
                 // stop song and play next song on another 'play' command received
                 if (uxQueueSpacesAvailable(sdFileCmdTaskHandle) == 0) {  /* received another item from queue */
                     memset(buffer, 0, sizeof(buffer));                   /* empty buffer */
+                    audio->stopPlayback();
                     break;
                 }
 
@@ -103,12 +101,16 @@ void vSendMp3Files(void * pvParameter) {
     uint8_t buffer[512];
     uint8_t * const bufferProducer = buffer;
 
-    xSemaphoreTake(startMp3Handle, portMAX_DELAY); /* wait on button semaphore signal from isr */
-
+    xSemaphoreTake(xSemaphore[1][SW_P2_2], portMAX_DELAY); /* wait on button semaphore signal from isr */
     for (;;) {
         res = f_open(&fil, sd->getCurrentFileName(), FA_OPEN_EXISTING | FA_READ);
         if (res == FR_OK) {
             for (;;) {                                              /* playing current song */
+                if (uxSemaphoreGetCount(xSemaphore[1][SW_P2_2]) == 1) {    /* if play/pause isr pressed */
+                    xSemaphoreTake(xSemaphore[1][SW_P2_2], portMAX_DELAY); /* consume entry semaphore */
+                    xSemaphoreTake(xSemaphore[1][SW_P2_2], portMAX_DELAY); /* pause then resume after receiving next sem */
+                }
+
                 res = f_read(&fil, buffer, sizeof(buffer), &br);    /* read file from sdFile vector */
                 if (res || br == 0) break;                          /* error or eof */
                 xQueueSend(mp3QueueHandle, &bufferProducer, portMAX_DELAY); /* fill producer queue */
@@ -136,21 +138,29 @@ void vPlayMp3Files(void * pvParameter) {
     }
 }
 
+/** vIncrementVolume Task, @Priority = High
+ *  @resumes from incrementVolumeFromISR task
+ *  increases volume level by one
+ */
+
 void vIncrementVolume(void * pvParameter) {
     auto * audio = (AudioDriver *)pvParameter;
     for (;;) {
         xSemaphoreTake(xSemaphore[1][SW_P2_0], portMAX_DELAY);
         audio->incrementVolume();
-        u0_dbg_put("vIn\n");
     }
 }
+
+/** vDecrementVolume Task, @Priority = High
+ *  @resumes from decrementVolumeFromISR task
+ *  decreases volume level by one
+ */
 
 void vDecrementVolume(void * pvParameter) {
     auto * audio = (AudioDriver *)pvParameter;
     for (;;) {
         xSemaphoreTake(xSemaphore[1][SW_P2_1], portMAX_DELAY);
         audio->decrementVolume();
-        u0_dbg_put("vDe\n");
     }
 }
 
@@ -167,8 +177,7 @@ int main(void) {
     mp3CmdTaskHandle = xQueueCreate(2, sizeof(uint8_t *));
     txtCmdTaskHandle = xQueueCreate(2, sizeof(uint8_t *));
 
-    /// isr semaphore/queue handles
-    startMp3Handle = xSemaphoreCreateBinary();
+    /// isr queue handles
     mp3QueueHandle = xQueueCreate(2, sizeof(uint8_t *));
 
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
@@ -176,7 +185,7 @@ int main(void) {
     /// command line handled tasks
     xTaskCreate(vPlayMp3FilesFromCmd, "cmp3cmd", STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);
     xTaskCreate(vPlayTxtFilesFromCmd, "ctxtcmd", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
-    xTaskCreate(vSendFilesFromCmd,    "pmp3cmd", STACK_SIZE_WORDS, nullptr, PRIORITY_LOW,  nullptr);
+    xTaskCreate(vSendFilesFromCmd,    "pmp3cmd", STACK_SIZE_WORDS, audio,   PRIORITY_LOW,  nullptr);
 
     /// isr handled tasks
     xTaskCreate(vPlayMp3Files,        "cmp3",    STACK_SIZE_WORDS, audio,   PRIORITY_HIGH, nullptr);

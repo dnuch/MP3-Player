@@ -9,7 +9,7 @@
 #include "GPIODriver.h"
 #include "SpiDriver.h"
 #include "utilities.h"
-#include "printf_lib.h"
+//#include "printf_lib.h"
 #include <cassert>
 
 enum AUDIO_OPCODE {
@@ -73,6 +73,8 @@ public:
 
     void incrementVolume();
     void decrementVolume();
+
+    void stopPlayback();
 private:
     /**
      * @Control_Signals (X indicative of active low)
@@ -136,7 +138,7 @@ inline uint16_t AudioDriver::SCI_RW(AUDIO_OPCODE opcode, SCI_REGISTER address, u
     while (!getDREQ());
     xSemaphoreGive(audioControlDataLock);
 
-    u0_dbg_printf("SPI0 Received: 0x%x\n", (d[2] << 8) | d[3]);
+//    u0_dbg_printf("SPI0 Received: 0x%x\n", (d[2] << 8) | d[3]);
     return (d[2] << 8) | d[3];
 }
 
@@ -189,6 +191,11 @@ inline void AudioDriver::decrementVolume() {
         volumeLevel--;
         SCI_RW(WRITE, VOL, vol);
     }
+}
+
+inline void AudioDriver::stopPlayback() {
+    SCI_RW(WRITE, MODE, 0x4800 | (1 << 3));  /* set SM_CANCEL bit */
+    while ((SCI_RW(READ, MODE) & (1 << 3))); /* wait until SM_CANCEL bit cleared */
 }
 
 #endif //AUDIODRIVER_H

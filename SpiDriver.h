@@ -76,7 +76,7 @@ inline uint8_t SpiDriver::transfer_spi1(uint8_t send) {
         while (ssp->SR & (1 << 4));
         // Give Semaphore back
         xSemaphoreGive(spi0_bus_lock);
-        return (uint8_t) ssp->DR;
+        return (uint8_t)ssp->DR;
     }
     return 0;
 }

@@ -28,13 +28,6 @@ bool AudioDriver::Init() {
     /// init SSP0 : SCLK @ (48 MHz / 48) 1 MHz @ 8 bit data frame
     assert(spi.initialize(LPC_SSP0, 8, SpiDriver::SPI, 48));
 
-    /** set clock frequency register
-        xtali * 3.5    @ 0x8000
-        multiplier + 1 @ 0x0800
-        12.288 * (3.5 + 1.0) = 55.296 MHz (max)
-    */
-//    SCI_RW(WRITE, CLOCKF, 0x8000 | 0x0800);
-
     /** set clock frequency
      *  12.288 * 2 = 24.576 MHz
      */
@@ -43,9 +36,11 @@ bool AudioDriver::Init() {
     // set spi clock back to (48 MHz / 4) 12 MHz
     spi.setClockDivider(4);
 
-    // init bass, volume(max) @ 0
-    SCI_RW(WRITE, BASS, 0x0000);
+    // set bass   @ 15 db; below 60 Hz @ 0xF6
+    // set treble @ 15 db; at and above 10 kHz @ 0xFA
+    SCI_RW(WRITE, BASS, (0xFA << 8) | 0xF6);
 
+    // init volume
     volumeLevel = 4;
     SCI_RW(WRITE, VOL, VOL_FOUR);
 

@@ -74,13 +74,17 @@ inline bool checkExtension(const char * fileName, const char * ext) {
 }
 
 inline void SdDriver::setNextSong() {
-    if (sdFiles.size() != (unsigned int)(currentMp3Index + 1)) {
-        currentMp3Index++;
+    if (sdFiles.size() > (unsigned int)(currentMp3Index)) {
+        currentMp3Index++;   /* iterate to next song */
+    } else {
+        currentMp3Index = 0; /* reset to 0 */
     }
 
     while (!checkExtension(getCurrentFileName(), ".mp3")) {
-        if (sdFiles.size() != (unsigned int)(currentMp3Index + 1)) {
+        if (sdFiles.size() > (unsigned int)(currentMp3Index)) {
             currentMp3Index++; /* skip non .mp3 files */
+        } else {
+            currentMp3Index = 0;
         }
     }
 }

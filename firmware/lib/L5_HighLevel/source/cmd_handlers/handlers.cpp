@@ -830,7 +830,7 @@ CMD_HANDLER_FUNC(playMP3Cmd)
 
     if (cmdParams.contains(".mp3") || cmdParams.contains(".txt") ||
         cmdParams.contains(".MP3") || cmdParams.contains(".TXT")) {
-        char cstr[20] = "1:";
+        char cstr[24] = "1:";
         strcat(cstr, cmdParams.c_str());
         char * cptr = cstr;
         xQueueSend(sdFileCmdTaskHandle, &cptr, 0);
