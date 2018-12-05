@@ -4,7 +4,10 @@
 
 #include "SdDriver.h"
 #include "AudioDriver.h"
+#include "OLEDDriver.h"
+
 #include "InterruptHandler.h"
+
 
 // TODO shared global vars - find way to package
 QueueHandle_t mp3QueueHandle;
@@ -170,7 +173,9 @@ int main(void) {
 
     auto * const sd = new SdDriver();
     auto * const audio = new AudioDriver();
-    assert(sd->Init() && audio->Init() && Init_MP3_GPIO_Interrupts());
+    auto * const oled = new OLEDDriver();
+
+    assert(sd->Init() && audio->Init() && Init_MP3_GPIO_Interrupts() && oled->Init());
 
     /// command line queue handles
     sdFileCmdTaskHandle = xQueueCreate(1, sizeof(uint8_t *));
