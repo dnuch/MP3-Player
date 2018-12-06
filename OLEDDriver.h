@@ -58,6 +58,9 @@ public:
 
     void fillDisplay(uint8_t byte);
     void testDisplay();
+    void writeS();
+    void clearDisplay();
+    void resetCursor();
 };
 
 #endif //SJSU_DEV_OLEDDRIVER_H
