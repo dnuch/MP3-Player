@@ -46,7 +46,7 @@ bool OLEDDriver::Init() {
 
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN);
 
-    testDisplay();
+    fillDisplay(0x00);
 
     return true;
 }
@@ -58,12 +58,12 @@ void OLEDDriver::toggleDisplay() {
 }
 
 void OLEDDriver::fillDisplay(uint8_t byte) {
-    uint8_t row, column, buffer[8];
+    uint8_t row, column, buffer[6];
     memset(buffer, byte, sizeof(buffer));
     for (row = 0; row < OLED_HEIGHT / 8; row++) { // row = page
         i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
-        for (column = 0; column < OLED_WIDTH; column += 8) {
-            /* Clear the display - 8x8 pixels at the time */
+        for (column = 0; column < OLED_WIDTH; column += 6) {
+            /* Clear the display - 8x6 pixels at the time */
             for (unsigned char b : buffer) {
                 i2c2->writeReg(OLED_ADDRESS, DATA, b);
             }
@@ -168,8 +168,43 @@ uint64_t OLEDDriver::charToDisplay(char c){
 void OLEDDriver::printChar(char c){
     uint64_t character = charToDisplay(c);
 
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | 2));
+
+    //i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | 2));
     for(int i = 0; i < 6; i++){
         i2c2->writeReg(OLED_ADDRESS, DATA, character >> 8*i);
     }
 }
+void OLEDDriver::printLine(const char *s, uint8_t row, uint8_t column)
+{
+    /*use s to point at every index of the string and at that
+     * index print out the char*/
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | (((column*6 + 0x02) & 0x0F ) >> 0));
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | (((column*6 + 0x02) & 0xF0) >> 4));
+
+
+    while(*s != '\0')
+    {
+        if(*s == ' ')
+        {
+            printSymbol(SPACE);
+        }
+        else
+        {
+            printChar(*s);
+
+        }
+        s++;
+    }
+
+}
+void OLEDDriver::printSymbol(alphabet_t sym)
+{
+    for(uint8_t i = 0; i < 6; i ++)
+    {
+        i2c2->writeReg(OLED_ADDRESS, DATA, (sym >> 8 * i));
+    }
+}
+
