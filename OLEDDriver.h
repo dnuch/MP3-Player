@@ -47,17 +47,93 @@ enum {
     NOP                  = 0xE3
 };
 
+//typedef enum {
+//    //NUMBERS
+//    ZERO                 = 0x003E4949493E,
+//    ONE                  = 0x00007F402000,
+//    TWO                  = 0x007149454321,
+//    THREE                = 0x003649494122,
+//    FOUR                 = 0x00087F281808,
+//    FIVE                 = 0x00464949497A,
+//    SIX                  = 0x00264949493E,
+//    SEVEN                = 0x007844424160,
+//    EIGHT                = 0x003649494946,
+//    NINE                 = 0x003F48484830,
+//
+//    //SYMBOLS
+//    PAUSE                = 0x007F7F007F7F,
+//    PLAY                 = 0x00081C3E7F7F,
+//    ARROW                = 0x00081c3e0808,
+//
+//    //LETTERS
+//    A                    = 0x003F4848483F,
+//    B                    = 0x00364949497F,
+//    C                    = 0x00224141413E,
+//    D                    = 0x003E4141417F,
+//    E                    = 0x00634149497F,
+//    F                    = 0x00604048487F,
+//    G                    = 0x00264545413E,
+//    H                    = 0x007F0808087F,
+//    I                    = 0x0041417F4141,
+//    J                    = 0x0040407F4147,
+//    K                    = 0x00412214087F,
+//    L                    = 0x00030101017F,
+//    M                    = 0x007F2010207F,
+//    N                    = 0x007F021C207F,
+//    O                    = 0x003E4141413E,
+//} alphabet_t;
+
+
 class OLEDDriver {
 private:
     I2C2 * i2c2;
 public:
-    OLEDDriver() = default;
+    OLEDDriver();
     bool Init();
 
     void toggleDisplay();
 
     void fillDisplay(uint8_t byte);
     void testDisplay();
+
+    void writeS();
+    void clearDisplay();
+    void resetCursor();
+
+    uint64_t charToDisplay(char c);
+    void printChar(char c);
+    //ALPHABET LOOKUP TABLE
+    const uint64_t charHexValues[26] =
+    {
+            [0]                     = 0x003F4848483F, //A
+            [1]                     = 0x00364949497F, //B
+            [2]                     = 0x00224141413E, //C
+            [3]                     = 0x003E4141417F, //D
+            [4]                     = 0x00634149497F, //E
+            [5]                     = 0x00604048487F, //F
+            [6]                     = 0x00264545413E, //G
+            [7]                     = 0x007F0808087F, //H
+            [8]                     = 0x0041417F4141, //I
+            [9]                     = 0x0040407F4147, //J
+            [10]                    = 0x00412214087F, //K
+            [11]                    = 0x00030101017F, //L
+            [12]                    = 0x007F2010207F, //M
+            [13]                    = 0x007F021C207F, //N
+            [14]                    = 0x003E4141413E, //O
+            [15]                    = 0x00304848483F, //P
+            [16]                    = 0x003F4345413E, //Q
+            [17]                    = 0x0030494A4C3F, //R
+            [18]                    = 0x002649494932, //S
+            [19]                    = 0x0040407F4040, //T
+            [20]                    = 0x007E0101017E, //U
+            [21]                    = 0x007804030478, //V
+            [22]                    = 0x007E010E017E, //W
+            [23]                    = 0x004136083641, //X
+            [24]                    = 0x0040201F2040, //Y
+            [25]                    = 0x006151494543, //Z
+    };
+
 };
 
 #endif //SJSU_DEV_OLEDDRIVER_H
+
