@@ -47,41 +47,27 @@ enum {
     NOP                  = 0xE3
 };
 
-//typedef enum {
+typedef enum {
 //    //NUMBERS
-//    ZERO                 = 0x003E4949493E,
-//    ONE                  = 0x00007F402000,
-//    TWO                  = 0x007149454321,
-//    THREE                = 0x003649494122,
-//    FOUR                 = 0x00087F281808,
-//    FIVE                 = 0x00464949497A,
-//    SIX                  = 0x00264949493E,
-//    SEVEN                = 0x007844424160,
-//    EIGHT                = 0x003649494946,
-//    NINE                 = 0x003F48484830,
-//
-//    //SYMBOLS
-//    PAUSE                = 0x007F7F007F7F,
-//    PLAY                 = 0x00081C3E7F7F,
-//    ARROW                = 0x00081c3e0808,
-//
-//    //LETTERS
-//    A                    = 0x003F4848483F,
-//    B                    = 0x00364949497F,
-//    C                    = 0x00224141413E,
-//    D                    = 0x003E4141417F,
-//    E                    = 0x00634149497F,
-//    F                    = 0x00604048487F,
-//    G                    = 0x00264545413E,
-//    H                    = 0x007F0808087F,
-//    I                    = 0x0041417F4141,
-//    J                    = 0x0040407F4147,
-//    K                    = 0x00412214087F,
-//    L                    = 0x00030101017F,
-//    M                    = 0x007F2010207F,
-//    N                    = 0x007F021C207F,
-//    O                    = 0x003E4141413E,
-//} alphabet_t;
+    ZERO                 = 0x003E4949493E,
+    ONE                  = 0x00007F402000,
+    TWO                  = 0x007149454321,
+    THREE                = 0x003649494122,
+    FOUR                 = 0x00087F281808,
+    FIVE                 = 0x00464949497A,
+    SIX                  = 0x00264949493E,
+    SEVEN                = 0x007844424160,
+    EIGHT                = 0x003649494946,
+    NINE                 = 0x003F48484830,
+
+    //SYMBOLS
+    PAUSE                = 0x007F7F007F7F,
+    PLAY                 = 0x00081C3E7F7F,
+    ARROW                = 0x00081c3e0808,
+    SPACE                = 0x000000000000,
+
+
+} alphabet_t;
 
 
 class OLEDDriver {
@@ -103,6 +89,8 @@ public:
     uint64_t charToDisplay(char c);
     void printChar(char c);
     //ALPHABET LOOKUP TABLE
+    void printLine(const char *s,uint8_t row,uint8_t column);
+    void printSymbol(alphabet_t sym);
     const uint64_t charHexValues[26] =
     {
             [0]                     = 0x003F4848483F, //A
