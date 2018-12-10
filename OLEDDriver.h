@@ -48,26 +48,15 @@ enum {
 };
 
 typedef enum {
-//    //NUMBERS
-    ZERO                 = 0x003E4949493E,
-    ONE                  = 0x00007F402000,
-    TWO                  = 0x007149454321,
-    THREE                = 0x003649494122,
-    FOUR                 = 0x00087F281808,
-    FIVE                 = 0x00464949497A,
-    SIX                  = 0x00264949493E,
-    SEVEN                = 0x007844424160,
-    EIGHT                = 0x003649494946,
-    NINE                 = 0x003F48484830,
 
-    //SYMBOLS
     PAUSE                = 0x007F7F007F7F,
     PLAY                 = 0x00081C3E7F7F,
     ARROW                = 0x00081c3e0808,
     SPACE                = 0x000000000000,
+    COLON                = 0x000066660000,
+    PERIOD               = 0x000003030000,
 
-
-} alphabet_t;
+} symbol_t;
 
 
 class OLEDDriver {
@@ -86,12 +75,16 @@ public:
     void clearDisplay();
     void resetCursor();
 
-    uint64_t charToDisplay(char c);
+    uint64_t charToDisplay(char c); //retrieves look up table value of a char
     void printChar(char c);
+    void printLine(const char *s,uint8_t row, uint8_t column);
+    void printSymbolAtPosition(symbol_t symbol, uint8_t row, uint8_t column);
+    void printSymbol(symbol_t sym);
+    void printCurrentSong(const char *s);
+    void printPause();
+    void printPlay();
     //ALPHABET LOOKUP TABLE
-    void printLine(const char *s,uint8_t row,uint8_t column);
-    void printSymbol(alphabet_t sym);
-    const uint64_t charHexValues[26] =
+    const uint64_t charHexValues[36] =
     {
             [0]                     = 0x003F4848483F, //A
             [1]                     = 0x00364949497F, //B
@@ -119,6 +112,16 @@ public:
             [23]                    = 0x004136083641, //X
             [24]                    = 0x0040201F2040, //Y
             [25]                    = 0x006151494543, //Z
+            [26]                    = 0x003E4949493E,//0
+            [27]                    = 0x00007F402000,//1
+            [28]                    = 0x007149454321,//2
+            [29]                    = 0x003649494122,//3
+            [30]                    = 0x00087F281808,//4
+            [31]                    = 0x00464949497A,//5
+            [32]                    = 0x00264949493E,//6
+            [33]                    = 0x007844424160,//7
+            [34]                    = 0x003649494946,//8
+            [35]                    = 0x003F48484830//9
     };
 
 };
