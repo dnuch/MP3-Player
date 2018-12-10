@@ -1,129 +1,273 @@
 //
-// SSH1106 driver 132x64
+// Created by drnuc on 12/4/2018.
 //
 
-#ifndef SJSU_DEV_OLEDDRIVER_H
-#define SJSU_DEV_OLEDDRIVER_H
+#include "OLEDDriver.h"
 
-#include "i2c2.hpp"
-#include "utilities.h"
-#include "string.h"
+OLEDDriver::OLEDDriver() {
+    i2c2 = &i2c2->getInstance();
+}
 
-/**
- * Contains specs. of OLED, addresses, and registers
- */
-enum {
-    OLED_WIDTH   = 132,
-    OLED_HEIGHT  = 64,
-    PAGE_COUNT   = 8,
-    OLED_ADDRESS = 0x78,
+bool OLEDDriver::Init() {
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_OFF);
 
-    DATA    = 0x40,
-    CONTROL = 0x00,
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_DISPLAY_CLOCKDIV);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, 0x80);
 
-    SET_LOW_COLUMN       = 0x00,    /* 0x00 - 0x0F */
-    SET_HIGH_COLUMN      = 0x10,    /* 0x10 - 0x1F */
-    SET_PUMP_VOL         = 0x30,    /* 0x30 - 0x33 */
-    SET_START_LINE       = 0x40,    /* 0x40 - 0x7F */
-    SET_CONTRAST         = 0x81,    /** multi-byte write; send 0x81 address then 0x00 - 0xFF into contrast data register */
-    SEG_REMAP            = 0xA0,    /* 0xA0 - 0xA1 */
-    DISPLAY_ALLON_RESUME = 0xA4,
-    DISPLAY_ALLON        = 0xA5,
-    NORMAL_DISPLAY       = 0xA6,
-    REVERSE_DISPLAY      = 0xA7,
-    SET_MULTIPLEX        = 0xA8,    /** multi-byte write; send 0xA8 then 0x00 - 0x3F */
-    SET_DCDC             = 0xAD,    /** multi-byte write; send 0xAD then 0x8A - 0x8B */
-    DISPLAY_OFF          = 0xAE,
-    DISPLAY_ON           = 0xAF,
-    SET_PAGE_ADDR        = 0xB0,    /* 0xB0 - 0xB7, 8 pages in total */
-    COM_OUT_SCAN         = 0xC0,    /* 0xC0 - 0xC8 */
-    SET_DISPLAY_OFFSET   = 0xD3,    /** multi-byte write; send 0xD3 then 0x00 - 0x3F; for setting COM0-COM63 (height?) */
-    SET_DISPLAY_CLOCKDIV = 0xD5,    /** multi-byte write; send 0xD5 then 0x00 - 0xFF */
-    SET_PRECHARGE        = 0xD9,    /** multi-byte write; send 0xD9 then 0x00 - 0xFF */
-    SET_COM_PINS         = 0xDA,    /** multi-byte write; send 0xDA then 0x02 - 0x12 */
-    SET_VCOM_DETECT      = 0xDB,    /** multi-byte write; send 0xDB then 0x00 - 0xFF */
-    READ_MODIFY_WRITE    = 0xE0,
-    END                  = 0xEE,
-    NOP                  = 0xE3
-};
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_MULTIPLEX);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, 0x3F);
 
-typedef enum {
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_DISPLAY_OFFSET);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, 0x00);
 
-    PAUSE                = 0x007F7F007F7F,
-    PLAY                 = 0x00081C3E7F7F,
-    ARROW                = 0x00081c3e0808,
-    SPACE                = 0x000000000000,
-    COLON                = 0x000066660000,
-    PERIOD               = 0x000003030000,
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_START_LINE);
 
-} symbol_t;
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SEG_REMAP | 0x01);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_COM_PINS);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, 0x12);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_CONTRAST);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, 0xCF);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PRECHARGE);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, 0xF1);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_VCOM_DETECT);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, 0x40);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_ALLON_RESUME);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, NORMAL_DISPLAY);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_ON);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | 0x02);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN);
+
+    fillDisplay(0x00);
 
 
-class OLEDDriver {
-private:
-    I2C2 * i2c2;
-public:
-    OLEDDriver();
-    bool Init();
+    return true;
+}
 
-    void toggleDisplay();
+void OLEDDriver::toggleDisplay() {
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_OFF);
+    delay_ms(1000);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_ON);
+}
 
-    void fillDisplay(uint8_t byte);
-    void testDisplay();
+void OLEDDriver::fillDisplay(uint8_t byte) {
+    uint8_t row, column, buffer[6];
+    memset(buffer, byte, sizeof(buffer));
+    for (row = 0; row < OLED_HEIGHT / 8; row++) { // row = page
+        i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
+        for (column = 0; column < OLED_WIDTH; column += 6) {
+            /* Clear the display - 8x6 pixels at the time */
+            for (unsigned char b : buffer) {
+                i2c2->writeReg(OLED_ADDRESS, DATA, b);
+            }
+        }
+    }
+}
 
-    void writeS();
-    void clearDisplay();
-    void resetCursor();
+void OLEDDriver::testDisplay() {
+    fillDisplay(0xFF);
+    delay_ms(1000);
+    fillDisplay(0x00);
+    delay_ms(1000);
+    fillDisplay(0x02);
+    delay_ms(1000);
+    fillDisplay(0xFF);
+}
 
-    uint64_t charToDisplay(char c); //retrieves look up table value of a char
-    void printChar(char c);
-    void printLine(const char *s,uint8_t row, uint8_t column);
-    void printSymbolAtPosition(symbol_t symbol, uint8_t row, uint8_t column);
-    void printSymbol(symbol_t sym);
-    void printCurrentSong(const char *s);
-    void printPause();
-    void printPlay();
-    //ALPHABET LOOKUP TABLE
-    const uint64_t charHexValues[36] =
+void OLEDDriver::writeS()
+{
+    clearDisplay();
+
+    uint8_t row, column;
+    //, buffer[8];
+    //memset(buffer, byte, sizeof(buffer));
+    for (row = 0; row < OLED_HEIGHT / 8; row++)
+    { // row = page
+        i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
+        for (column = 0; column < 12; column++)
+        {
+            //D7 - D0
+            //i2c2->writeReg(OLED_ADDRESS, DATA, 0x0F);
+            if(column%6 == 0)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0x89);
+            }
+            if(column%6 ==1)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0x6E);
+            }
+            if(column%6 ==2)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0x6E);
+            }
+            if(column%6 ==3)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0x6E);
+            }
+            if(column%6 ==4)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0xB1);
+            }
+            if(column%6 ==5)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0xFF);
+            }
+            if(column%6 ==6)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0xFF);
+            }
+            if(column%6 ==7)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, 0xFF);
+            }
+
+
+        }
+        resetCursor();
+    }
+}
+
+void OLEDDriver::clearDisplay()
+{
+    uint8_t row, column, buffer[6];
+    memset(buffer, 0xFF, sizeof(buffer));
+    for (row = 0; row < OLED_HEIGHT / 8; row++)
+    { // row = page
+        i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
+        for (column = 0; column < OLED_WIDTH; column += 6)
+        {
+            /* Clear the display - 8x8 pixels at the time */
+            for (unsigned char b : buffer)
+            {
+                i2c2->writeReg(OLED_ADDRESS, DATA, b);
+            }
+        }
+    }
+}
+
+void OLEDDriver::resetCursor()
+{
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | 0x02);
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN);
+}
+
+uint64_t OLEDDriver::charToDisplay(char c){
+    if(c > 90) {
+        //Letter is lower case
+        c = c -32;
+    }
+    else if( c > 47 && c < 58){
+        //c is a number
+        return charHexValues[c -22];
+    }
+    return charHexValues[c - 65]; //to make the range between 0 and 25
+}
+
+void OLEDDriver::printChar(char c){
+    uint64_t character = charToDisplay(c);
+
+
+    //i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | 2));
+    for(int i = 0; i < 6; i++){
+        i2c2->writeReg(OLED_ADDRESS, DATA, character >> 8*i);
+    }
+}
+void OLEDDriver::printLine(const char *s, uint8_t row, uint8_t column)
+{
+    /*use s to point at every index of the string and at that
+     * index print out the char*/
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | (((column*6 + 0x02) & 0x0F ) >> 0));
+
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | (((column*6 + 0x02) & 0xF0) >> 4));
+
+
+    while(*s != '\0')
     {
-            [0]                     = 0x003F4848483F, //A
-            [1]                     = 0x00364949497F, //B
-            [2]                     = 0x00224141413E, //C
-            [3]                     = 0x003E4141417F, //D
-            [4]                     = 0x00634149497F, //E
-            [5]                     = 0x00604048487F, //F
-            [6]                     = 0x00264545413E, //G
-            [7]                     = 0x007F0808087F, //H
-            [8]                     = 0x0041417F4141, //I
-            [9]                     = 0x0040407F4147, //J
-            [10]                    = 0x00412214087F, //K
-            [11]                    = 0x00030101017F, //L
-            [12]                    = 0x007F2010207F, //M
-            [13]                    = 0x007F021C207F, //N
-            [14]                    = 0x003E4141413E, //O
-            [15]                    = 0x00304848483F, //P
-            [16]                    = 0x003F4345413E, //Q
-            [17]                    = 0x0030494A4C3F, //R
-            [18]                    = 0x002649494932, //S
-            [19]                    = 0x0040407F4040, //T
-            [20]                    = 0x007E0101017E, //U
-            [21]                    = 0x007804030478, //V
-            [22]                    = 0x007E010E017E, //W
-            [23]                    = 0x004136083641, //X
-            [24]                    = 0x0040201F2040, //Y
-            [25]                    = 0x006151494543, //Z
-            [26]                    = 0x003E4949493E,//0
-            [27]                    = 0x00007F402000,//1
-            [28]                    = 0x007149454321,//2
-            [29]                    = 0x003649494122,//3
-            [30]                    = 0x00087F281808,//4
-            [31]                    = 0x00464949497A,//5
-            [32]                    = 0x00264949493E,//6
-            [33]                    = 0x007844424160,//7
-            [34]                    = 0x003649494946,//8
-            [35]                    = 0x003F48484830//9
-    };
+        if(*s == ' ')
+        {
+            printSymbol(SPACE);
+        }
+        else
+        {
+            printChar(*s);
 
-};
+        }
+        s++;
+    }
 
-#endif //SJSU_DEV_OLEDDRIVER_H
+}
+void OLEDDriver::printSymbol(symbol_t sym)
+{
+    for(uint8_t i = 0; i < 6; i ++)
+    {
+        i2c2->writeReg(OLED_ADDRESS, DATA, (sym >> 8 * i));
+    }
+}
+
+void OLEDDriver::printSymbolAtPosition(symbol_t symbol, uint8_t row, uint8_t column)
+{
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | (((column*6 + 0x02) & 0x0F) >> 0)); //lower hex + 2 to low column
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | (((column*6 +0x02) & 0xF0) >> 4)); //high hex value to high column
+
+    for(uint8_t i = 0; i < 6; i++)
+    {
+        i2c2->writeReg(OLED_ADDRESS, DATA, (symbol >> 8 * i));
+    }
+
+}
+
+void OLEDDriver::printCurrentSong(const char *s) //PRINT TO PAGE 6, STARTING AT COLUMN 2
+{
+    //set page and move cursor
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | 6));
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec -> 16 hex
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
+    //clear line, columns 2 - 21
+    for(uint8_t i = 0; i <= 18; i++){
+        printSymbol(SPACE);
+    }
+    //reset cursor
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec -> 16 hex
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
+    while(*s != '\0')
+    {
+        if(*s == ' ')
+        {
+            printSymbol(SPACE);
+        }
+        else if(*s == '.')
+        {
+            printSymbol(PERIOD);
+        }
+        else
+        {
+            printChar(*s);
+        }
+        s++;
+    }
+}
+
+void OLEDDriver::printPause()
+{
+    printSymbolAtPosition(SPACE, 6, 1);
+    printSymbolAtPosition(PAUSE, 6, 1);
+}
+
+void OLEDDriver::printPlay()
+{
+    printSymbolAtPosition(SPACE, 6, 1);
+    printSymbolAtPosition(PLAY, 6, 1);
+}
+
