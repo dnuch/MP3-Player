@@ -1,4 +1,3 @@
-//#define NDEBUG
 #include <stdio.h>
 #include <stdlib.h>
 #include "utilities.h"
@@ -10,20 +9,25 @@
 
 int main()
 {
-    scheduler_add_task(new terminalTask(PRIORITY_HIGH));
+    //scheduler_add_task(new terminalTask(PRIORITY_HIGH));
 
     OLEDDriver oled;
     oled.Init();
-    oled.printLine("hello world", 7, 5);
-//    oled.writeS();
+    //oled.printLine("hello world", 7, 5);
+    //oled.printCurrentSong("songName.mp3");
 
-    scheduler_start();
+
+    //scheduler_start();
 
 
     while(1)
     {
-
-        //oled.toggleDisplay();
+        oled.printPlay();
+        oled.printCurrentSong("songName.mp3");
+        delay_ms(2000);
+        oled.printPause();
+        oled.printCurrentSong("longSongName.mp3");
         delay_ms(2000);
     }
 }
+
