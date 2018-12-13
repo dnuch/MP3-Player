@@ -197,6 +197,9 @@ void OLEDDriver::printLine(const char *s, uint8_t row, uint8_t column)
         if(*s == ' ')
         {
             printSymbol(SPACE);
+        } else if(*s == ':')
+        {
+            printSymbol(COLON);
         }
         else
         {
@@ -269,5 +272,80 @@ void OLEDDriver::printPlay()
 {
     printSymbolAtPosition(SPACE, 6, 1);
     printSymbolAtPosition(PLAY, 6, 1);
+}
+
+void OLEDDriver::printVolume(uint8_t vol)
+{
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 5);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X66 & 0x0F) >> 0)); //102 DEC -> 66 HEX
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x66 & 0xF0) >> 4));
+    for(uint8_t i = 0; i < 9; i++)
+    {
+        //clears the volume if it exists
+        printSymbol(SPACE);
+    }
+    //reset cursor
+//    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X66 & 0x0F) >> 0)); //102 DEC -> 66 HEX
+//    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x66 & 0xF0) >> 4));
+    printLine("Volume", 6, 10); //prints "VOLUME"
+    printSymbol(COLON); //prints ":"
+    printChar(vol); //prints "#"
+}
+
+void OLEDDriver::printTopSong(const char *s)
+{
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 3);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec ->16 hex
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
+    //clear the line
+    for(uint8_t i = 0; i <= 18; i++)
+    {
+        printSymbol(SPACE);
+    }
+
+    printLine(s, 3, 2);
+}
+
+void OLEDDriver::printMidSong(const char *s)
+{
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 2);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec ->16 hex
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
+    //clear the line
+    for(uint8_t i = 0; i <= 18; i++)
+    {
+        printSymbol(SPACE);
+    }
+
+    printLine(s, 2, 2);
+}
+
+void OLEDDriver::printBotSong(const char *s)
+{
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 1);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec ->16 hex
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
+    //clear the line
+    for(uint8_t i = 0; i <= 18; i++)
+    {
+        printSymbol(SPACE);
+    }
+
+    printLine(s, 1, 2);
+}
+
+void OLEDDriver::moveArrowTop()
+{
+    printSymbolAtPosition(ARROW, 3, 1);
+}
+
+void OLEDDriver::moveArrowMid()
+{
+    printSymbolAtPosition(ARROW, 2, 1);
+}
+
+void OLEDDriver::moveArrowBot()
+{
+    printSymbolAtPosition(ARROW, 1, 1);
 }
 
