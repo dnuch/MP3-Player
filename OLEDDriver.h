@@ -83,6 +83,14 @@ public:
     void printCurrentSong(const char *s);
     void printPause();
     void printPlay();
+    void printVolume(uint8_t vol);
+    void printTopSong(const char *s);
+    void printMidSong(const char *s);
+    void printBotSong(const char *s);
+    void moveArrowTop();
+    void moveArrowMid();
+    void moveArrowBot();
+
     //ALPHABET LOOKUP TABLE
     const uint64_t charHexValues[36] =
     {
