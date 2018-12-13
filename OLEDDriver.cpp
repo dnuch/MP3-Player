@@ -1,14 +1,16 @@
 //
-// Created by drnuc on 12/4/2018.
+// SH1106 implementation
 //
 
 #include "OLEDDriver.h"
 
-OLEDDriver::OLEDDriver() {
+OLEDDriver::OLEDDriver()
+{
     i2c2 = &i2c2->getInstance();
 }
 
-bool OLEDDriver::Init() {
+bool OLEDDriver::Init()
+{
     i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_OFF);
 
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_DISPLAY_CLOCKDIV);
@@ -48,17 +50,18 @@ bool OLEDDriver::Init() {
 
     fillDisplay(0x00);
 
-
     return true;
 }
 
-void OLEDDriver::toggleDisplay() {
+void OLEDDriver::toggleDisplay()
+{
     i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_OFF);
     delay_ms(1000);
     i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_ON);
 }
 
-void OLEDDriver::fillDisplay(uint8_t byte) {
+void OLEDDriver::fillDisplay(uint8_t byte)
+{
     uint8_t row, column, buffer[6];
     memset(buffer, byte, sizeof(buffer));
     for (row = 0; row < OLED_HEIGHT / 8; row++) { // row = page
@@ -72,7 +75,8 @@ void OLEDDriver::fillDisplay(uint8_t byte) {
     }
 }
 
-void OLEDDriver::testDisplay() {
+void OLEDDriver::testDisplay()
+{
     fillDisplay(0xFF);
     delay_ms(1000);
     fillDisplay(0x00);
@@ -80,59 +84,6 @@ void OLEDDriver::testDisplay() {
     fillDisplay(0x02);
     delay_ms(1000);
     fillDisplay(0xFF);
-}
-
-void OLEDDriver::writeS()
-{
-    clearDisplay();
-
-    uint8_t row, column;
-    //, buffer[8];
-    //memset(buffer, byte, sizeof(buffer));
-    for (row = 0; row < OLED_HEIGHT / 8; row++)
-    { // row = page
-        i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
-        for (column = 0; column < 12; column++)
-        {
-            //D7 - D0
-            //i2c2->writeReg(OLED_ADDRESS, DATA, 0x0F);
-            if(column%6 == 0)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0x89);
-            }
-            if(column%6 ==1)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0x6E);
-            }
-            if(column%6 ==2)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0x6E);
-            }
-            if(column%6 ==3)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0x6E);
-            }
-            if(column%6 ==4)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0xB1);
-            }
-            if(column%6 ==5)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0xFF);
-            }
-            if(column%6 ==6)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0xFF);
-            }
-            if(column%6 ==7)
-            {
-                i2c2->writeReg(OLED_ADDRESS, DATA, 0xFF);
-            }
-
-
-        }
-        resetCursor();
-    }
 }
 
 void OLEDDriver::clearDisplay()
@@ -144,7 +95,7 @@ void OLEDDriver::clearDisplay()
         i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
         for (column = 0; column < OLED_WIDTH; column += 6)
         {
-            /* Clear the display - 8x8 pixels at the time */
+            /* Clear the display - 8x6 pixels at the time */
             for (unsigned char b : buffer)
             {
                 i2c2->writeReg(OLED_ADDRESS, DATA, b);
@@ -156,7 +107,6 @@ void OLEDDriver::clearDisplay()
 void OLEDDriver::resetCursor()
 {
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | 0x02);
-
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN);
 }
 
@@ -167,23 +117,22 @@ void OLEDDriver::moveCursor(uint8_t row, uint8_t column)
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | (((column*6 + 0x02) & 0xF0) >> 4));
 }
 
-uint64_t OLEDDriver::charToDisplay(char c){
+uint64_t OLEDDriver::charToDisplay(char c)
+{
     if(c > 90) {
         //Letter is lower case
-        c = c -32;
+        c = c - 32;
     }
     else if(c > 47 && c < 58){
         //c is a number
-        return charHexValues[c -22];
+        return charHexValues[c - 22];
     }
     return charHexValues[c - 65]; //to make the range between 0 and 25
 }
 
-void OLEDDriver::printChar(char c){
+void OLEDDriver::printChar(char c)
+{
     uint64_t character = charToDisplay(c);
-
-
-    //i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | 2));
     for(int i = 0; i < 6; i++){
         i2c2->writeReg(OLED_ADDRESS, DATA, character >> 8*i);
     }
@@ -193,11 +142,7 @@ void OLEDDriver::printLine(const char *s, uint8_t row, uint8_t column)
     /*use s to point at every index of the string and at that
      * index print out the char*/
 
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | (((column*6 + 0x02) & 0x0F ) >> 0));
-
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | (((column*6 + 0x02) & 0xF0) >> 4));
-
+    moveCursor(row, column);
 
     while(*s != '\0')
     {
@@ -221,20 +166,10 @@ void OLEDDriver::printLine(const char *s, uint8_t row, uint8_t column)
     }
 
 }
-void OLEDDriver::printSymbol(symbol_t sym)
-{
-    for(uint8_t i = 0; i < 6; i ++)
-    {
-        i2c2->writeReg(OLED_ADDRESS, DATA, (sym >> 8 * i));
-    }
-}
 
 void OLEDDriver::printSymbolAtPosition(symbol_t symbol, uint8_t row, uint8_t column)
 {
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | (((column*6 + 0x02) & 0x0F) >> 0)); //lower hex + 2 to low column
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | (((column*6 +0x02) & 0xF0) >> 4)); //high hex value to high column
-
+    moveCursor(row, column);
     for(uint8_t i = 0; i < 6; i++)
     {
         i2c2->writeReg(OLED_ADDRESS, DATA, (symbol >> 8 * i));
@@ -244,33 +179,12 @@ void OLEDDriver::printSymbolAtPosition(symbol_t symbol, uint8_t row, uint8_t col
 
 void OLEDDriver::printCurrentSong(const char *s) //PRINT TO PAGE 6, STARTING AT COLUMN 2
 {
-    //set page and move cursor
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | 6));
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec -> 16 hex
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
+    moveCursor(6, 2);
     //clear line, columns 2 - 21
     for(uint8_t i = 0; i <= 18; i++){
         printSymbol(SPACE);
     }
-    //reset cursor
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec -> 16 hex
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
-    while(*s != '\0')
-    {
-        if(*s == ' ')
-        {
-            printSymbol(SPACE);
-        }
-        else if(*s == '.')
-        {
-            printSymbol(PERIOD);
-        }
-        else
-        {
-            printChar(*s);
-        }
-        s++;
-    }
+    printLine(s, 6, 2);
 }
 
 void OLEDDriver::printPause()
@@ -287,19 +201,13 @@ void OLEDDriver::printPlay()
 
 void OLEDDriver::printVolume(uint8_t vol)
 {
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 5);
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X5C & 0x0F) >> 0)); //92 DEC -> 5C HEX
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x5C & 0xF0) >> 4));
+    moveCursor(5, 9);
     for(uint8_t i = 0; i < 9; i++)
     {
-        //clears the volume if it exists
         printSymbol(SPACE);
     }
-    //reset cursor
-//    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X66 & 0x0F) >> 0)); //92 DEC -> 5C HEX
-//    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x66 & 0xF0) >> 4));
-    printLine("Volume", 5, 9); //prints "VOLUME"
-    printSymbol(COLON); //prints ":"
+    printLine("Volume", 5, 9);
+    printSymbol(COLON);
     if(vol == 0){
         printVolumeBars(VOL_ZERO, VOL_ZERO);
     } else if(vol == 1){
@@ -317,10 +225,7 @@ void OLEDDriver::printVolume(uint8_t vol)
 
 void OLEDDriver::printTopSong(const char *s)
 {
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 3);
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec ->16 hex
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
-    //clear the line
+    moveCursor(3, 2);
     for(uint8_t i = 0; i <= 18; i++)
     {
         printSymbol(SPACE);
@@ -331,10 +236,7 @@ void OLEDDriver::printTopSong(const char *s)
 
 void OLEDDriver::printMidSong(const char *s)
 {
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 2);
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec ->16 hex
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
-    //clear the line
+    moveCursor(2, 2);
     for(uint8_t i = 0; i <= 18; i++)
     {
         printSymbol(SPACE);
@@ -345,16 +247,21 @@ void OLEDDriver::printMidSong(const char *s)
 
 void OLEDDriver::printBotSong(const char *s)
 {
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 1);
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0x16 & 0x0F) >> 0)); //22 dec ->16 hex
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x16 & 0xF0) >> 4));
-    //clear the line
+    moveCursor(1, 2);
     for(uint8_t i = 0; i <= 18; i++)
     {
         printSymbol(SPACE);
     }
 
     printLine(s, 1, 2);
+}
+
+void OLEDDriver::printSymbol(symbol_t sym)
+{
+    for(uint8_t i = 0; i < 6; i ++)
+    {
+        i2c2->writeReg(OLED_ADDRESS, DATA, (sym >> 8 * i));
+    }
 }
 
 void OLEDDriver::moveArrowTop()
@@ -385,7 +292,6 @@ void OLEDDriver::eraseSymbolAtPosition(uint8_t row, uint8_t column)
 
 void OLEDDriver::printVolumeBars(volume_t first, volume_t second)
 {
-    //clear old volume bars
     printSymbolAtPosition(SPACE, 5, 16);
     printSymbolAtPosition(SPACE, 5, 17);
     moveCursor(5, 16);
@@ -398,4 +304,3 @@ void OLEDDriver::printVolumeBars(volume_t first, volume_t second)
         i2c2->writeReg(OLED_ADDRESS, DATA, (second >> 8 * j));
     }
 }
-
