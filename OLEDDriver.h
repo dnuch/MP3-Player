@@ -58,6 +58,16 @@ typedef enum {
 
 } symbol_t;
 
+typedef enum {
+
+    VOL_ZERO             = 0x000000000000,
+    VOL_ONE              = 0x000000000100,
+    VOL_TWO              = 0x000003000100,
+    VOL_THREE            = 0x070003000100,
+    VOL_FOUR             = 0x000000000F00,
+    VOL_FIVE             = 0x00003F000F00,
+
+} volume_t;
 
 class OLEDDriver {
 private:
@@ -74,6 +84,7 @@ public:
     void writeS();
     void clearDisplay();
     void resetCursor();
+    void moveCursor(uint8_t row, uint8_t column);
 
     uint64_t charToDisplay(char c); //retrieves look up table value of a char
     void printChar(char c);
@@ -90,6 +101,8 @@ public:
     void moveArrowTop();
     void moveArrowMid();
     void moveArrowBot();
+    void eraseSymbolAtPosition(uint8_t row, uint8_t column);
+    void printVolumeBars(volume_t first, volume_t second);
 
     //ALPHABET LOOKUP TABLE
     const uint64_t charHexValues[36] =
