@@ -160,12 +160,19 @@ void OLEDDriver::resetCursor()
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN);
 }
 
+void OLEDDriver::moveCursor(uint8_t row, uint8_t column)
+{
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | row);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | (((column*6 + 0x02) & 0x0F ) >> 0));
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | (((column*6 + 0x02) & 0xF0) >> 4));
+}
+
 uint64_t OLEDDriver::charToDisplay(char c){
     if(c > 90) {
         //Letter is lower case
         c = c -32;
     }
-    else if( c > 47 && c < 58){
+    else if(c > 47 && c < 58){
         //c is a number
         return charHexValues[c -22];
     }
@@ -200,6 +207,10 @@ void OLEDDriver::printLine(const char *s, uint8_t row, uint8_t column)
         } else if(*s == ':')
         {
             printSymbol(COLON);
+        }
+        else if(*s == '.')
+        {
+            printSymbol(PERIOD);
         }
         else
         {
@@ -277,19 +288,31 @@ void OLEDDriver::printPlay()
 void OLEDDriver::printVolume(uint8_t vol)
 {
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_PAGE_ADDR | 5);
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X66 & 0x0F) >> 0)); //102 DEC -> 66 HEX
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x66 & 0xF0) >> 4));
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X5C & 0x0F) >> 0)); //92 DEC -> 5C HEX
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x5C & 0xF0) >> 4));
     for(uint8_t i = 0; i < 9; i++)
     {
         //clears the volume if it exists
         printSymbol(SPACE);
     }
     //reset cursor
-//    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X66 & 0x0F) >> 0)); //102 DEC -> 66 HEX
+//    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | ((0X66 & 0x0F) >> 0)); //92 DEC -> 5C HEX
 //    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN | ((0x66 & 0xF0) >> 4));
-    printLine("Volume", 6, 10); //prints "VOLUME"
+    printLine("Volume", 5, 9); //prints "VOLUME"
     printSymbol(COLON); //prints ":"
-    printChar(vol); //prints "#"
+    if(vol == 0){
+        printVolumeBars(VOL_ZERO, VOL_ZERO);
+    } else if(vol == 1){
+        printVolumeBars(VOL_ONE, VOL_ZERO);
+    } else if(vol == 2){
+        printVolumeBars(VOL_TWO, VOL_ZERO);
+    } else if(vol == 3) {
+        printVolumeBars(VOL_THREE, VOL_ZERO);
+    } else if(vol == 4) {
+        printVolumeBars(VOL_THREE, VOL_FOUR);
+    } else {
+        printVolumeBars(VOL_THREE, VOL_FIVE);
+    }
 }
 
 void OLEDDriver::printTopSong(const char *s)
@@ -336,16 +359,43 @@ void OLEDDriver::printBotSong(const char *s)
 
 void OLEDDriver::moveArrowTop()
 {
+    eraseSymbolAtPosition(2,1);
+    eraseSymbolAtPosition(1,1);
     printSymbolAtPosition(ARROW, 3, 1);
 }
 
 void OLEDDriver::moveArrowMid()
 {
+    eraseSymbolAtPosition(3,1);
+    eraseSymbolAtPosition(1,1);
     printSymbolAtPosition(ARROW, 2, 1);
 }
 
 void OLEDDriver::moveArrowBot()
 {
+    eraseSymbolAtPosition(2,1);
+    eraseSymbolAtPosition(3,1);
     printSymbolAtPosition(ARROW, 1, 1);
+}
+
+void OLEDDriver::eraseSymbolAtPosition(uint8_t row, uint8_t column)
+{
+    printSymbolAtPosition(SPACE, row, column);
+}
+
+void OLEDDriver::printVolumeBars(volume_t first, volume_t second)
+{
+    //clear old volume bars
+    printSymbolAtPosition(SPACE, 5, 16);
+    printSymbolAtPosition(SPACE, 5, 17);
+    moveCursor(5, 16);
+    for(uint8_t i = 0; i < 6; i++)
+    {
+        i2c2->writeReg(OLED_ADDRESS, DATA, (first >> 8 * i));
+    }
+    for(uint8_t j = 0; j < 6; j++)
+    {
+        i2c2->writeReg(OLED_ADDRESS, DATA, (second >> 8 * j));
+    }
 }
 
