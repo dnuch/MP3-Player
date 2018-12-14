@@ -23,7 +23,7 @@ private:
     /**
      * points to current file in sdFiles vector
      */
-    uint16_t currentMp3Index;
+    volatile uint16_t currentMp3Index;
 
 public:
     SdDriver() : currentMp3Index(0) {}
@@ -40,8 +40,9 @@ public:
 
     unsigned int getTotalFileLength() { return (unsigned int)sdFiles.size(); }
     char * getCurrentFileName() { return sdFiles[currentMp3Index].fileName; }
-    bool isNextFileFromIndex(unsigned int index) { return currentMp3Index+index < sdFiles.size(); }
-    char * getNextFileNameFromIndex(int index) { return sdFiles[currentMp3Index+index].fileName; }
+
+    bool isNextFileFromIndex(unsigned int index) { return index < sdFiles.size(); }
+    char * getNextFileNameFromIndex(int index) { return sdFiles[index].fileName; }
 
     /**
      * Set file index based on filename in parameter
