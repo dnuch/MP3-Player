@@ -49,17 +49,6 @@ enum {
 
 typedef enum {
 
-    PAUSE                = 0x007F7F007F7F,
-    PLAY                 = 0x00081C3E7F7F,
-    ARROW                = 0x00081c3e0808,
-    SPACE                = 0x000000000000,
-    COLON                = 0x000066660000,
-    PERIOD               = 0x000003030000,
-
-} symbol_t;
-
-typedef enum {
-
     VOL_ZERO             = 0x000000000000,
     VOL_ONE              = 0x000000000100,
     VOL_TWO              = 0x000003000100,
@@ -69,12 +58,31 @@ typedef enum {
 
 } volume_t;
 
+typedef enum {
+
+    TOP = 0x00,
+    MID,
+    BOT
+
+} position_t;
+
 class OLEDDriver {
 private:
     I2C2 * i2c2;
 public:
     OLEDDriver();
     bool Init();
+
+    typedef enum {
+
+        PAUSE                = 0x007F7F007F7F,
+        PLAY                 = 0x00081C3E7F7F,
+        ARROW                = 0x00081c3e0808,
+        SPACE                = 0x000000000000,
+        COLON                = 0x000066660000,
+        PERIOD               = 0x000003030000,
+
+    } symbol_t;
 
     void toggleDisplay();
 
@@ -93,15 +101,15 @@ public:
     void printCurrentSong(const char *s);
     void printPause();
     void printPlay();
-    void printVolume(uint8_t vol);
-    void printTopSong(const char *s);
-    void printMidSong(const char *s);
-    void printBotSong(const char *s);
-    void moveArrowTop();
-    void moveArrowMid();
-    void moveArrowBot();
+    void initVolume(uint8_t vol);
+    void printListSong(const char *s, position_t pos);
+    void printListArrow(uint8_t pos);
     void eraseSymbolAtPosition(uint8_t row, uint8_t column);
+    void setVolumeBars(uint8_t vol);
     void printVolumeBars(volume_t first, volume_t second);
+
+    void setSongList(const char *topSong, const char *midSong, const char *botSong, position_t arrowPosition);
+    void initDisplay(const char *topSong, const char *midSong, const char *botSong);
 
     //ALPHABET LOOKUP TABLE
     const uint64_t charHexValues[36] =

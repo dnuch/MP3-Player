@@ -11,6 +11,7 @@
 #include "utilities.h"
 //#include "printf_lib.h"
 #include <cassert>
+#define MAX_VOLUME_LEVEL 5
 
 enum AUDIO_OPCODE {
     WRITE = 0x2,
@@ -74,6 +75,8 @@ public:
     void incrementVolume();
     void decrementVolume();
 
+    uint8_t getVolumeLevel() { return volumeLevel; }
+
     void stopPlayback();
 private:
     /**
@@ -101,10 +104,8 @@ private:
     SemaphoreHandle_t audioControlDataLock;
 
     enum VOLUME_LEVEL {
-        MAX_VOLUME_LEVEL = 5,
-
         VOL_FIVE  = 0x2020,   // max
-        VOL_FOUR  = 0x3030,
+        VOL_FOUR  = 0x3030,   // init
         VOL_THREE = 0x4040,
         VOL_TWO   = 0x5050,
         VOL_ONE   = 0x6060,
@@ -162,18 +163,16 @@ inline void AudioDriver::SDI_W(const uint8_t * buffer, int length) {
 inline void AudioDriver::incrementVolume() {
     uint16_t vol = 0x0000;
 
-    if (volumeLevel != MAX_VOLUME_LEVEL) {
-        switch (volumeLevel) {
-            case 0:  vol = VOL_ONE;   break;
-            case 1:  vol = VOL_TWO;   break;
-            case 2:  vol = VOL_THREE; break;
-            case 3:  vol = VOL_FOUR;  break;
-            case 4:  vol = VOL_FIVE;  break;
-            default: vol = VOL_FOUR;
-        }
-        volumeLevel++;
-        SCI_RW(WRITE, VOL, vol);
+    switch (volumeLevel) {
+        case 0:  vol = VOL_ONE;   break;
+        case 1:  vol = VOL_TWO;   break;
+        case 2:  vol = VOL_THREE; break;
+        case 3:  vol = VOL_FOUR;  break;
+        case 4:  vol = VOL_FIVE;  break;
+        default: vol = VOL_FOUR;
     }
+    volumeLevel++;
+    SCI_RW(WRITE, VOL, vol);
 }
 
 inline void AudioDriver::decrementVolume() {

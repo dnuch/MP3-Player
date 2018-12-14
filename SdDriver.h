@@ -35,10 +35,13 @@ public:
      */
     bool readSDFiles();
     void setNextSong();
-
+    void setMp3Index(uint16_t index) { if (index < sdFiles.size()) currentMp3Index = index; }
     void setPreviousSong() { if (currentMp3Index != 0) currentMp3Index--; }
 
+    unsigned int getTotalFileLength() { return (unsigned int)sdFiles.size(); }
     char * getCurrentFileName() { return sdFiles[currentMp3Index].fileName; }
+    bool isNextFileFromIndex(unsigned int index) { return currentMp3Index+index < sdFiles.size(); }
+    char * getNextFileNameFromIndex(int index) { return sdFiles[currentMp3Index+index].fileName; }
 
     /**
      * Set file index based on filename in parameter

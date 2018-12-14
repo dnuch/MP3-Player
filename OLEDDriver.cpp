@@ -44,7 +44,7 @@ bool OLEDDriver::Init()
 
     i2c2->writeReg(OLED_ADDRESS, CONTROL, DISPLAY_ON);
 
-    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN | 0x02);
+    i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_LOW_COLUMN);
 
     i2c2->writeReg(OLED_ADDRESS, CONTROL, SET_HIGH_COLUMN);
 
@@ -64,7 +64,7 @@ void OLEDDriver::fillDisplay(uint8_t byte)
 {
     uint8_t row, column, buffer[6];
     memset(buffer, byte, sizeof(buffer));
-    for (row = 0; row < OLED_HEIGHT / 8; row++) { // row = page
+    for (row = 0; row < OLED_HEIGHT / PAGE_COUNT; row++) { // row = page
         i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
         for (column = 0; column < OLED_WIDTH; column += 6) {
             /* Clear the display - 8x6 pixels at the time */
@@ -90,7 +90,7 @@ void OLEDDriver::clearDisplay()
 {
     uint8_t row, column, buffer[6];
     memset(buffer, 0xFF, sizeof(buffer));
-    for (row = 0; row < OLED_HEIGHT / 8; row++)
+    for (row = 0; row < OLED_HEIGHT / PAGE_COUNT; row++)
     { // row = page
         i2c2->writeReg(OLED_ADDRESS, CONTROL, (uint8_t)(SET_PAGE_ADDR | row));
         for (column = 0; column < OLED_WIDTH; column += 6)
@@ -181,7 +181,8 @@ void OLEDDriver::printCurrentSong(const char *s) //PRINT TO PAGE 6, STARTING AT 
 {
     moveCursor(6, 2);
     //clear line, columns 2 - 21
-    for(uint8_t i = 0; i <= 18; i++){
+    for(uint8_t i = 0; i <= 18; i++)
+    {
         printSymbol(SPACE);
     }
     printLine(s, 6, 2);
@@ -199,20 +200,12 @@ void OLEDDriver::printPlay()
     printSymbolAtPosition(PLAY, 6, 1);
 }
 
-void OLEDDriver::printVolume(uint8_t vol)
-{
-    moveCursor(5, 9);
-    for(uint8_t i = 0; i < 9; i++)
-    {
-        printSymbol(SPACE);
-    }
-    printLine("Volume", 5, 9);
-    printSymbol(COLON);
-    if(vol == 0){
+void OLEDDriver::setVolumeBars(uint8_t vol) {
+    if(vol == 0) {
         printVolumeBars(VOL_ZERO, VOL_ZERO);
-    } else if(vol == 1){
+    } else if(vol == 1) {
         printVolumeBars(VOL_ONE, VOL_ZERO);
-    } else if(vol == 2){
+    } else if(vol == 2) {
         printVolumeBars(VOL_TWO, VOL_ZERO);
     } else if(vol == 3) {
         printVolumeBars(VOL_THREE, VOL_ZERO);
@@ -223,37 +216,35 @@ void OLEDDriver::printVolume(uint8_t vol)
     }
 }
 
-void OLEDDriver::printTopSong(const char *s)
+void OLEDDriver::initVolume(uint8_t vol)
 {
-    moveCursor(3, 2);
-    for(uint8_t i = 0; i <= 18; i++)
+    moveCursor(5, 9);
+    for(uint8_t i = 0; i < 9; i++)
     {
         printSymbol(SPACE);
     }
-
-    printLine(s, 3, 2);
+    printLine("Volume", 5, 9);
+    printSymbol(COLON);
+    setVolumeBars(vol);
 }
 
-void OLEDDriver::printMidSong(const char *s)
+void OLEDDriver::printListSong(const char *s, position_t pos)
 {
-    moveCursor(2, 2);
+    uint8_t row = 0;
+    switch (pos)
+    {
+        case TOP: row = 3; break;
+        case MID: row = 2; break;
+        case BOT: row = 1;
+    }
+
+    moveCursor(row, 2);
     for(uint8_t i = 0; i <= 18; i++)
     {
         printSymbol(SPACE);
     }
 
-    printLine(s, 2, 2);
-}
-
-void OLEDDriver::printBotSong(const char *s)
-{
-    moveCursor(1, 2);
-    for(uint8_t i = 0; i <= 18; i++)
-    {
-        printSymbol(SPACE);
-    }
-
-    printLine(s, 1, 2);
+    printLine(s, row, 2);
 }
 
 void OLEDDriver::printSymbol(symbol_t sym)
@@ -264,25 +255,20 @@ void OLEDDriver::printSymbol(symbol_t sym)
     }
 }
 
-void OLEDDriver::moveArrowTop()
+void OLEDDriver::printListArrow(uint8_t pos)
 {
-    eraseSymbolAtPosition(2,1);
-    eraseSymbolAtPosition(1,1);
-    printSymbolAtPosition(ARROW, 3, 1);
-}
+    uint8_t row = 0;
+    switch (pos)
+    {
+        case TOP: row = 3; break;
+        case MID: row = 2; break;
+        case BOT: row = 1;
+    }
 
-void OLEDDriver::moveArrowMid()
-{
-    eraseSymbolAtPosition(3,1);
-    eraseSymbolAtPosition(1,1);
-    printSymbolAtPosition(ARROW, 2, 1);
-}
-
-void OLEDDriver::moveArrowBot()
-{
-    eraseSymbolAtPosition(2,1);
-    eraseSymbolAtPosition(3,1);
-    printSymbolAtPosition(ARROW, 1, 1);
+    if (pos == TOP || pos == MID) eraseSymbolAtPosition(1,1);
+    if (pos == TOP || pos == BOT) eraseSymbolAtPosition(2,1);
+    if (pos == MID || pos == BOT) eraseSymbolAtPosition(3,1);
+    printSymbolAtPosition(ARROW, row, 1);
 }
 
 void OLEDDriver::eraseSymbolAtPosition(uint8_t row, uint8_t column)
@@ -303,4 +289,17 @@ void OLEDDriver::printVolumeBars(volume_t first, volume_t second)
     {
         i2c2->writeReg(OLED_ADDRESS, DATA, (second >> 8 * j));
     }
+}
+
+void OLEDDriver::setSongList(const char *topSong, const char *midSong, const char *botSong, position_t arrowPosition)
+{
+    printListSong(topSong, TOP);
+    printListSong(midSong, MID);
+    printListSong(botSong, BOT);
+    printListArrow(arrowPosition);
+}
+
+void OLEDDriver::initDisplay(const char *topSong, const char *midSong, const char *botSong) {
+    setSongList(topSong, midSong, botSong, TOP);
+    initVolume(4);
 }
