@@ -36,13 +36,16 @@ enum SCI_REGISTER {
     AICTRL1,
     AICTRL2,
     AICTRL3,
+
+    // WRAM register for fast play rate
     PLAYSPEED = 0x1e04,
 };
 
 enum PlaySpeed {
-     NORMAL = 1,
-     FAST = 4
+     NORMAL = 1, // normal speed
+     FAST   = 4
 };
+
 class AudioDriver {
 public:
     AudioDriver();
@@ -206,27 +209,8 @@ inline void AudioDriver::stopPlayback() {
 }
 
 inline void AudioDriver::setPlaySpeed(PlaySpeed spd){
-    SCI_RW_speed(WRITE, 0x1e04, spd);
+    SCI_RW(WRITE, WRAMADDR, PLAYSPEED);
+    SCI_RW(WRITE, WRAM, spd);
 }
 
-inline uint16_t AudioDriver::SCI_RW_speed(AUDIO_OPCODE opcode, uint16_t address, uint16_t data) {
-    uint8_t d[4];
-    // wait until DREQ is high
-    xSemaphoreTake(audioControlDataLock, portMAX_DELAY);
-    while (!getDREQ());
-    x_CS.setLow();
-    {
-        d[0] = spi.transfer_spi0(opcode);
-        d[1] = spi.transfer_spi0(address);
-        d[2] = spi.transfer_spi0((uint8_t)(data >> 8));
-        d[3] = spi.transfer_spi0((uint8_t)(data & 0x00FF));
-    }
-    x_CS.setHigh();
-    // wait until DREQ is high
-    while (!getDREQ());
-    xSemaphoreGive(audioControlDataLock);
-
-//    u0_dbg_printf("SPI0 Received: 0x%x\n", (d[2] << 8) | d[3]);
-    return (d[2] << 8) | d[3];
-}
 #endif //AUDIODRIVER_H
