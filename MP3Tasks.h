@@ -21,7 +21,6 @@ volatile uint8_t mp3State = PAUSE;
 volatile uint8_t listIndex = 0;
 volatile uint16_t listMultiplier = 0;
 volatile bool isCurrentlyPlaying = false;
-volatile bool isFastForward = false;
 
 #define MAX_LIST_ENTRY 3
 #define SET_MP3_STATE(state) (mp3State = state)
@@ -164,10 +163,8 @@ extern void vSendMp3Files(void *) {
                 isCurrentlyPlaying = false;
             } else {
                 sd->setNextSong();
-                //listIndex++;
-                //oled->printListArrow(listIndex);
 
-                if(2 > listIndex){
+                if (2 > listIndex){
                     if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + listIndex + 1)) {
                         listIndex++;
                         oled->printListArrow(listIndex);
@@ -244,7 +241,8 @@ extern void vIncrVolumeOrList(void *) {
 
 /** vDecrementVolume Task, @Priority = High
  *  @resumes from decrementVolumeFromISR task
- *  decreases volume level by one
+ *  @state = PLAY; decreases volume level by one
+ *  @state = PAUSE; decrement list
  */
 
 extern void vDecrVolumeOrList(void *) {
@@ -277,16 +275,17 @@ extern void vDecrVolumeOrList(void *) {
     }
 }
 
-// TODO impl fast-forward
 extern void vFastForwardOrSelect(void *) {
+    bool isFastForward = false;
     for (;;) {
         xSemaphoreTake(xSemaphore[1][SW_P2_3], portMAX_DELAY);
         switch(mp3State) {
             case PLAY:
-                if(isFastForward){
+                if (isFastForward) {
                     audio->setPlaySpeed(NORMAL);
-                }
-                else{
+                    isFastForward = false;
+                } else {
+                    isFastForward = true;
                     audio->setPlaySpeed(FAST);
                 }
                 break;
@@ -299,4 +298,5 @@ extern void vFastForwardOrSelect(void *) {
         }
     }
 }
+
 #endif //SJSU_DEV_MP3TASKS_H
