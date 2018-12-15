@@ -21,6 +21,7 @@ volatile uint8_t mp3State = PAUSE;
 volatile uint8_t listIndex = 0;
 volatile uint16_t listMultiplier = 0;
 volatile bool isCurrentlyPlaying = false;
+volatile bool isFastForward = false;
 
 #define MAX_LIST_ENTRY 3
 #define SET_MP3_STATE(state) (mp3State = state)
@@ -32,6 +33,7 @@ auto * const oled = new OLEDDriver();
 QueueHandle_t mp3QueueHandle;
 QueueHandle_t mp3CmdTaskHandle;
 QueueHandle_t txtCmdTaskHandle;
+QueueHandle_t sdFileCmdTaskHandle;
 
 /**
  * update song list based on list index and list multiplier
@@ -162,6 +164,28 @@ extern void vSendMp3Files(void *) {
                 isCurrentlyPlaying = false;
             } else {
                 sd->setNextSong();
+                //listIndex++;
+                //oled->printListArrow(listIndex);
+
+                if(2 > listIndex){
+                    if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + listIndex + 1)) {
+                        listIndex++;
+                        oled->printListArrow(listIndex);
+                    }
+                    else {
+                        listIndex = TOP;
+                        listMultiplier = 0;
+                        updateSongList(TOP);
+                    }
+                }
+                else {
+                    if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 1)) {
+                        listIndex = TOP;
+                        listMultiplier++;
+                        updateSongList(TOP);
+                    }
+
+                }
             }
             u0_dbg_printf("finished song\n");
         }
@@ -259,6 +283,12 @@ extern void vFastForwardOrSelect(void *) {
         xSemaphoreTake(xSemaphore[1][SW_P2_3], portMAX_DELAY);
         switch(mp3State) {
             case PLAY:
+                if(isFastForward){
+                    audio->setPlaySpeed(NORMAL);
+                }
+                else{
+                    audio->setPlaySpeed(FAST);
+                }
                 break;
             case PAUSE:
                 sd->setMp3Index(listIndex + (uint16_t)(MAX_LIST_ENTRY * listMultiplier));
@@ -269,5 +299,4 @@ extern void vFastForwardOrSelect(void *) {
         }
     }
 }
-
 #endif //SJSU_DEV_MP3TASKS_H
