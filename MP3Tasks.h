@@ -32,6 +32,7 @@ auto * const oled = new OLEDDriver();
 QueueHandle_t mp3QueueHandle;
 QueueHandle_t mp3CmdTaskHandle;
 QueueHandle_t txtCmdTaskHandle;
+QueueHandle_t sdFileCmdTaskHandle;
 
 /**
  * update song list based on list index and list multiplier
@@ -162,6 +163,26 @@ extern void vSendMp3Files(void *) {
                 isCurrentlyPlaying = false;
             } else {
                 sd->setNextSong();
+
+                if (2 > listIndex){
+                    if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + listIndex + 1)) {
+                        listIndex++;
+                        oled->printListArrow(listIndex);
+                    }
+                    else {
+                        listIndex = TOP;
+                        listMultiplier = 0;
+                        updateSongList(TOP);
+                    }
+                }
+                else {
+                    if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 1)) {
+                        listIndex = TOP;
+                        listMultiplier++;
+                        updateSongList(TOP);
+                    }
+
+                }
             }
             u0_dbg_printf("finished song\n");
         }
@@ -220,7 +241,8 @@ extern void vIncrVolumeOrList(void *) {
 
 /** vDecrementVolume Task, @Priority = High
  *  @resumes from decrementVolumeFromISR task
- *  decreases volume level by one
+ *  @state = PLAY; decreases volume level by one
+ *  @state = PAUSE; decrement list
  */
 
 extern void vDecrVolumeOrList(void *) {
@@ -253,12 +275,19 @@ extern void vDecrVolumeOrList(void *) {
     }
 }
 
-// TODO impl fast-forward
 extern void vFastForwardOrSelect(void *) {
+    bool isFastForward = false;
     for (;;) {
         xSemaphoreTake(xSemaphore[1][SW_P2_3], portMAX_DELAY);
         switch(mp3State) {
             case PLAY:
+                if (isFastForward) {
+                    audio->setPlaySpeed(NORMAL);
+                    isFastForward = false;
+                } else {
+                    isFastForward = true;
+                    audio->setPlaySpeed(FAST);
+                }
                 break;
             case PAUSE:
                 sd->setMp3Index(listIndex + (uint16_t)(MAX_LIST_ENTRY * listMultiplier));

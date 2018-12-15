@@ -19,6 +19,7 @@ enum AUDIO_OPCODE {
 };
 
 enum SCI_REGISTER {
+
     MODE = 0x0,     // 0x4800 on reset
     STATUS,         // 0x000C on reset
     BASS,
@@ -34,7 +35,15 @@ enum SCI_REGISTER {
     AICTRL0,
     AICTRL1,
     AICTRL2,
-    AICTRL3
+    AICTRL3,
+
+    // WRAM register for fast play rate
+    PLAYSPEED = 0x1e04,
+};
+
+enum PlaySpeed {
+     NORMAL = 1, // normal speed
+     FAST   = 4
 };
 
 class AudioDriver {
@@ -78,6 +87,8 @@ public:
     uint8_t getVolumeLevel() { return volumeLevel; }
 
     void stopPlayback();
+    void setPlaySpeed(PlaySpeed spd);
+    uint16_t SCI_RW_speed(AUDIO_OPCODE opcode, uint16_t address, uint16_t data);
 private:
     /**
      * @Control_Signals (X indicative of active low)
@@ -195,6 +206,11 @@ inline void AudioDriver::decrementVolume() {
 inline void AudioDriver::stopPlayback() {
     SCI_RW(WRITE, MODE, 0x4800 | (1 << 3));  /* set SM_CANCEL bit */
     while ((SCI_RW(READ, MODE) & (1 << 3))); /* wait until SM_CANCEL bit cleared */
+}
+
+inline void AudioDriver::setPlaySpeed(PlaySpeed spd){
+    SCI_RW(WRITE, WRAMADDR, PLAYSPEED);
+    SCI_RW(WRITE, WRAM, spd);
 }
 
 #endif //AUDIODRIVER_H
