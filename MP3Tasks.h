@@ -164,7 +164,7 @@ extern void vSendMp3Files(void *) {
             } else {
                 sd->setNextSong();
 
-                if (2 > listIndex){
+                if (2 > listIndex) {
                     if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + listIndex + 1)) {
                         listIndex++;
                         oled->printListArrow(listIndex);
@@ -242,7 +242,7 @@ extern void vIncrVolumeOrList(void *) {
 /** vDecrementVolume Task, @Priority = High
  *  @resumes from decrementVolumeFromISR task
  *  @state = PLAY; decreases volume level by one
- *  @state = PAUSE; decrement list
+ *  @state = PAUSE; decrement music list
  */
 
 extern void vDecrVolumeOrList(void *) {
@@ -275,6 +275,12 @@ extern void vDecrVolumeOrList(void *) {
     }
 }
 
+/** vFastForwardOrSelect Task, @Priority = High
+ *  @resumes from decrementVolumeFromISR task
+ *  @state = PLAY; set play rate to 1x/4x normal speed
+ *  @state = PAUSE; select and play song
+ */
+
 extern void vFastForwardOrSelect(void *) {
     bool isFastForward = false;
     for (;;) {
@@ -282,8 +288,8 @@ extern void vFastForwardOrSelect(void *) {
         switch(mp3State) {
             case PLAY:
                 if (isFastForward) {
-                    audio->setPlaySpeed(NORMAL);
                     isFastForward = false;
+                    audio->setPlaySpeed(NORMAL);
                 } else {
                     isFastForward = true;
                     audio->setPlaySpeed(FAST);
@@ -291,8 +297,8 @@ extern void vFastForwardOrSelect(void *) {
                 break;
             case PAUSE:
                 sd->setMp3Index(listIndex + (uint16_t)(MAX_LIST_ENTRY * listMultiplier));
-                xSemaphoreGive(xSemaphore[1][SW_P2_2]);
                 isCurrentlyPlaying = true;
+                xSemaphoreGive(xSemaphore[1][SW_P2_2]);
                 break;
             default: break;
         }
