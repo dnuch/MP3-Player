@@ -42,7 +42,7 @@ public:
     char * getCurrentFileName() { return sdFiles[currentMp3Index].fileName; }
 
     bool isNextFileFromIndex(unsigned int index) { return index < sdFiles.size(); }
-    char * getNextFileNameFromIndex(int index) { return sdFiles[index].fileName; }
+    char * getNextFileNameFromIndex(unsigned int index) { return sdFiles[index].fileName; }
 
     /**
      * Set file index based on filename in parameter

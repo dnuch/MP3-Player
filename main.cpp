@@ -29,14 +29,16 @@ int main(void) {
     xTaskCreate(vPlayMp3Files,        "cmp3",    STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
     xTaskCreate(vSendMp3Files,        "pmp3",    STACK_SIZE_WORDS, nullptr, PRIORITY_LOW,  nullptr);
 
-    xTaskCreate(vIncrVolumeOrList, "vinc", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
-    xTaskCreate(vDecrVolumeOrList, "vdec", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
+    xTaskCreate(vIncrVolumeOrList,    "incVL",   STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
+    xTaskCreate(vDecrVolumeOrList,    "decVL",   STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
 
-    xTaskCreate(vFastForwardOrSelect, "vffs",    STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
+    xTaskCreate(vFastForwardOrSelect, "ffs",     STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
+
+    xTaskCreate(vNextOrPrevious, "ns", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
 
     /// init oled display of song lists & Volume
-    // assumes 3 songs in sd file
-    oled->initDisplay(sd->getCurrentFileName(), sd->getNextFileNameFromIndex(1), sd->getNextFileNameFromIndex(2));
+    updateSongList(TOP);
+    oled->initVolume(4);
 
     scheduler_start();
 

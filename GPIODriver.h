@@ -38,7 +38,8 @@ enum {
     SW_P2_0 = 0,
     SW_P2_1 = 1,
     SW_P2_2 = 2,
-    SW_P2_3 = 3
+    SW_P2_3 = 3,
+    SW_P2_4 = 4
 };
 
 class GPIODriver

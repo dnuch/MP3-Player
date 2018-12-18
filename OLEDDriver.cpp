@@ -298,8 +298,3 @@ void OLEDDriver::setSongList(const char *topSong, const char *midSong, const cha
     printListSong(botSong, BOT);
     printListArrow(arrowPosition);
 }
-
-void OLEDDriver::initDisplay(const char *topSong, const char *midSong, const char *botSong) {
-    setSongList(topSong, midSong, botSong, TOP);
-    initVolume(4);
-}

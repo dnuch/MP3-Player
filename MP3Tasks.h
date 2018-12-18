@@ -20,7 +20,8 @@ enum {
 volatile uint8_t mp3State = PAUSE;
 volatile uint8_t listIndex = 0;
 volatile uint16_t listMultiplier = 0;
-volatile bool isCurrentlyPlaying = false;
+volatile bool setSongPreviousOrIndex = false;
+volatile bool setNextSong = false;
 
 #define MAX_LIST_ENTRY 3
 #define SET_MP3_STATE(state) (mp3State = state)
@@ -32,13 +33,12 @@ auto * const oled = new OLEDDriver();
 QueueHandle_t mp3QueueHandle;
 QueueHandle_t mp3CmdTaskHandle;
 QueueHandle_t txtCmdTaskHandle;
-QueueHandle_t sdFileCmdTaskHandle;
 
 /**
  * update song list based on list index and list multiplier
  * @param arrowPosition
  */
-static inline void updateSongList(position_t arrowPosition) {
+extern inline void updateSongList(position_t arrowPosition) {
     oled->setSongList(sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier) ? sd->getNextFileNameFromIndex(MAX_LIST_ENTRY * listMultiplier) : " ",
                       sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 1) ? sd->getNextFileNameFromIndex(MAX_LIST_ENTRY * listMultiplier + 1) : " ",
                       sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 2) ? sd->getNextFileNameFromIndex(MAX_LIST_ENTRY * listMultiplier + 2) : " ",
@@ -134,7 +134,8 @@ extern void vSendMp3Files(void *) {
 
     xSemaphoreTake(xSemaphore[1][SW_P2_2], portMAX_DELAY); /* wait on button semaphore signal from isr */
     SET_MP3_STATE(PLAY);
-    isCurrentlyPlaying = false;
+    setSongPreviousOrIndex = false;
+    setNextSong = false;
     for (;;) {
         res = f_open(&fil, sd->getCurrentFileName(), FA_OPEN_EXISTING | FA_READ);
         if (res == FR_OK) {
@@ -150,7 +151,8 @@ extern void vSendMp3Files(void *) {
                     oled->printPlay();
                 }
 
-                if (isCurrentlyPlaying) {
+                if (setSongPreviousOrIndex || setNextSong) {
+                    audio->stopPlayback();
                     break;
                 }
 
@@ -159,9 +161,10 @@ extern void vSendMp3Files(void *) {
                 xQueueSend(mp3QueueHandle, &bufferProducer, portMAX_DELAY); /* fill producer queue */
             }
             f_close(&fil);
-            if (isCurrentlyPlaying) {
-                isCurrentlyPlaying = false;
+            if (setSongPreviousOrIndex) {
+                setSongPreviousOrIndex = false;
             } else {
+                setNextSong = false;
                 sd->setNextSong();
 
                 if (2 > listIndex) {
@@ -261,12 +264,7 @@ extern void vDecrVolumeOrList(void *) {
                     oled->printListArrow(listIndex);
                 } else {
                     listIndex = TOP;
-                    if (listMultiplier) {
-                        listMultiplier--;
-                        oled->printListArrow(listIndex);
-                    } else {
-                        listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
-                    }
+                    listMultiplier > 0 ? listMultiplier-- : listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
                     updateSongList(TOP);
                 }
                 break;
@@ -287,17 +285,33 @@ extern void vFastForwardOrSelect(void *) {
         xSemaphoreTake(xSemaphore[1][SW_P2_3], portMAX_DELAY);
         switch(mp3State) {
             case PLAY:
-                if (isFastForward) {
-                    isFastForward = false;
-                    audio->setPlaySpeed(NORMAL);
-                } else {
-                    isFastForward = true;
-                    audio->setPlaySpeed(FAST);
-                }
+                isFastForward ? audio->setPlaySpeed(NORMAL) : audio->setPlaySpeed(FAST);
+                isFastForward = !isFastForward;
                 break;
             case PAUSE:
                 sd->setMp3Index(listIndex + (uint16_t)(MAX_LIST_ENTRY * listMultiplier));
-                isCurrentlyPlaying = true;
+                setSongPreviousOrIndex = true;
+                xSemaphoreGive(xSemaphore[1][SW_P2_2]);
+                break;
+            default: break;
+        }
+    }
+}
+
+extern void vNextOrPrevious(void *) {
+    for (;;) {
+        xSemaphoreTake(xSemaphore[1][SW_P2_4], portMAX_DELAY);
+        switch(mp3State) {
+            case PLAY:
+                setNextSong = true;
+                break;
+            case PAUSE:
+                sd->setPreviousSong();
+                setSongPreviousOrIndex = true;
+                if (listIndex > 0) {
+                    listIndex--;
+                    oled->printListArrow(listIndex);
+                }
                 xSemaphoreGive(xSemaphore[1][SW_P2_2]);
                 break;
             default: break;

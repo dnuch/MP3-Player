@@ -11,6 +11,7 @@ extern void incrVolumeOrListFromISR(void);
 extern void decrVolumeOrListFromISR(void);
 extern void playOrPauseFromISR(void);
 extern void fastForwardOrSelectFromISR(void);
+extern void nextOrPreviousFromISR(void);
 
 extern bool Init_MP3_GPIO_Interrupts();
 
