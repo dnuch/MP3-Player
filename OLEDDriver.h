@@ -69,6 +69,7 @@ typedef enum {
 class OLEDDriver {
 private:
     I2C2 * i2c2;
+
 public:
     OLEDDriver();
     bool Init();
@@ -108,8 +109,7 @@ public:
     void setVolumeBars(uint8_t vol);
     void printVolumeBars(volume_t first, volume_t second);
 
-    void setSongList(const char *topSong, const char *midSong, const char *botSong, position_t arrowPosition);
-    void initDisplay(const char *topSong, const char *midSong, const char *botSong);
+    void setSongList(const char *topSong, const char *midSong, const char *botSong, uint8_t arrowPosition);
 
     //ALPHABET LOOKUP TABLE
     const uint64_t charHexValues[36] =

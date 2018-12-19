@@ -22,6 +22,7 @@ volatile uint8_t listIndex = 0;
 volatile uint16_t listMultiplier = 0;
 volatile bool setSongPreviousOrIndex = false;
 volatile bool setNextSong = false;
+volatile bool disableNextAndPrevious = false;
 
 #define MAX_LIST_ENTRY 3
 #define SET_MP3_STATE(state) (mp3State = state)
@@ -38,7 +39,7 @@ QueueHandle_t txtCmdTaskHandle;
  * update song list based on list index and list multiplier
  * @param arrowPosition
  */
-extern inline void updateSongList(position_t arrowPosition) {
+extern inline void updateSongList(uint8_t arrowPosition) {
     oled->setSongList(sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier) ? sd->getNextFileNameFromIndex(MAX_LIST_ENTRY * listMultiplier) : " ",
                       sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 1) ? sd->getNextFileNameFromIndex(MAX_LIST_ENTRY * listMultiplier + 1) : " ",
                       sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 2) ? sd->getNextFileNameFromIndex(MAX_LIST_ENTRY * listMultiplier + 2) : " ",
@@ -139,6 +140,7 @@ extern void vSendMp3Files(void *) {
     for (;;) {
         res = f_open(&fil, sd->getCurrentFileName(), FA_OPEN_EXISTING | FA_READ);
         if (res == FR_OK) {
+            disableNextAndPrevious = false;
             oled->printCurrentSong(sd->getCurrentFileName());
             oled->printPlay();
             for (;;) {                                              /* playing current song */
@@ -179,12 +181,12 @@ extern void vSendMp3Files(void *) {
                     }
                 }
                 else {
-                    if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 1)) {
-                        listIndex = TOP;
-                        listMultiplier++;
-                        updateSongList(TOP);
+                    listMultiplier++;
+                    listIndex = TOP;
+                    if (!sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier)) {
+                        listMultiplier = 0;
                     }
-
+                    updateSongList(TOP);
                 }
             }
             u0_dbg_printf("finished song\n");
@@ -224,17 +226,23 @@ extern void vIncrVolumeOrList(void *) {
                 }
                 break;
             case PAUSE:
+                disableNextAndPrevious = true;
                 if (2 > listIndex) {
                     if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + listIndex + 1)) {
                         listIndex++;
                         oled->printListArrow(listIndex);
-                    }
-                } else {
-                    if (sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier + 1)) {
+                    } else {
                         listIndex = TOP;
-                        listMultiplier++;
+                        listMultiplier = 0;
                         updateSongList(TOP);
                     }
+                } else {
+                    listMultiplier++;
+                    listIndex = TOP;
+                    if (!sd->isNextFileFromIndex(MAX_LIST_ENTRY * listMultiplier)) {
+                        listMultiplier = 0;
+                    }
+                    updateSongList(TOP);
                 }
                 break;
             default: break;
@@ -259,12 +267,17 @@ extern void vDecrVolumeOrList(void *) {
                 }
                 break;
             case PAUSE:
+                disableNextAndPrevious = true;
                 if (listIndex > 0) {
                     listIndex--;
                     oled->printListArrow(listIndex);
                 } else {
+                    listMultiplier > 0 ? listMultiplier-- :
+                     sd->getTotalFileLength() % 3 == 0 ? listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY - 1 :
+                                                        listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
+
+//                    listMultiplier > 0 ? listMultiplier-- : listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
                     listIndex = TOP;
-                    listMultiplier > 0 ? listMultiplier-- : listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
                     updateSongList(TOP);
                 }
                 break;
@@ -301,20 +314,35 @@ extern void vFastForwardOrSelect(void *) {
 extern void vNextOrPrevious(void *) {
     for (;;) {
         xSemaphoreTake(xSemaphore[1][SW_P2_4], portMAX_DELAY);
-        switch(mp3State) {
-            case PLAY:
-                setNextSong = true;
-                break;
-            case PAUSE:
-                sd->setPreviousSong();
-                setSongPreviousOrIndex = true;
-                if (listIndex > 0) {
-                    listIndex--;
-                    oled->printListArrow(listIndex);
-                }
-                xSemaphoreGive(xSemaphore[1][SW_P2_2]);
-                break;
-            default: break;
+        if (!disableNextAndPrevious) {
+            switch (mp3State) {
+                case PLAY:
+                    setNextSong = true;
+                    break;
+                case PAUSE:
+                    sd->setPreviousSong();
+                    setSongPreviousOrIndex = true;
+                    if (listIndex > 0) {
+                        listIndex--;
+                        oled->printListArrow(listIndex);
+                    } else {
+                        if (listMultiplier) {
+                            listMultiplier--;
+                            listIndex = BOT;
+                            updateSongList(BOT);
+                        } else {
+                            sd->getTotalFileLength() % 3 == 0 ? listMultiplier = (sd->getTotalFileLength() / MAX_LIST_ENTRY) - 1 :
+                                                                listMultiplier = (sd->getTotalFileLength() / MAX_LIST_ENTRY);
+                            listIndex = TOP;
+                            sd->setMp3Index(listMultiplier * MAX_LIST_ENTRY);
+                            updateSongList(TOP);
+                        }
+                    }
+                    xSemaphoreGive(xSemaphore[1][SW_P2_2]);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

@@ -25,8 +25,9 @@ bool SdDriver::readSDFiles() {
             } else {                                               /* It is a file. */
                 if (strlen(fno.fname) < 4) continue;               /* does not have .mp3/.txt extension */
 
-                if (checkExtension(fno.fname, ".mp3") ||          /* is mp3/txt file */
-                    checkExtension(fno.fname, ".txt")) {
+                if (checkExtension(fno.fname, ".mp3")         /* is mp3/txt file */
+//                    || checkExtension(fno.fname, ".txt")
+                    ) {
                     strcpy(filename, path);
                     strcat(filename, fno.fname);
 

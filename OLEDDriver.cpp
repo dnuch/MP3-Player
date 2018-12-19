@@ -1,5 +1,5 @@
 //
-// SH1106 implementation
+// SSH1106 implementation
 //
 
 #include "OLEDDriver.h"
@@ -185,7 +185,7 @@ void OLEDDriver::printCurrentSong(const char *s) //PRINT TO PAGE 6, STARTING AT 
     {
         printSymbol(SPACE);
     }
-    printLine(s, 6, 2);
+    printLine(s+2, 6, 2);
 }
 
 void OLEDDriver::printPause()
@@ -291,10 +291,10 @@ void OLEDDriver::printVolumeBars(volume_t first, volume_t second)
     }
 }
 
-void OLEDDriver::setSongList(const char *topSong, const char *midSong, const char *botSong, position_t arrowPosition)
+void OLEDDriver::setSongList(const char *topSong, const char *midSong, const char *botSong, uint8_t arrowPosition)
 {
-    printListSong(topSong, TOP);
-    printListSong(midSong, MID);
-    printListSong(botSong, BOT);
+    printListSong(strcmp(topSong, " ") != 0 ? &topSong[2] : " ", TOP);
+    printListSong(strcmp(midSong, " ") != 0 ? &midSong[2] : " ", MID);
+    printListSong(strcmp(botSong, " ") != 0 ? &botSong[2] : " ", BOT);
     printListArrow(arrowPosition);
 }

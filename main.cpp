@@ -34,7 +34,7 @@ int main(void) {
 
     xTaskCreate(vFastForwardOrSelect, "ffs",     STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
 
-    xTaskCreate(vNextOrPrevious, "ns", STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
+    xTaskCreate(vNextOrPrevious,      "ns",      STACK_SIZE_WORDS, nullptr, PRIORITY_HIGH, nullptr);
 
     /// init oled display of song lists & Volume
     updateSongList(TOP);

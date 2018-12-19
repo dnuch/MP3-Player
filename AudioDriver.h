@@ -38,7 +38,7 @@ enum SCI_REGISTER {
     AICTRL3,
 
     // WRAM register for fast play rate
-    PLAYSPEED = 0x1e04,
+    PLAYSPEED = 0x1E04,
 };
 
 enum PlaySpeed {
@@ -88,7 +88,7 @@ public:
 
     void stopPlayback();
     void setPlaySpeed(PlaySpeed spd);
-    uint16_t SCI_RW_speed(AUDIO_OPCODE opcode, uint16_t address, uint16_t data);
+
 private:
     /**
      * @Control_Signals (X indicative of active low)
