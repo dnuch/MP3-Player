@@ -119,7 +119,7 @@ extern void vPlayTxtFilesFromCmd(void *) {
 }
 
 /** vSendMp3Files Task, @Priority = Low
- *  @resumes from button isr
+ *  @resumes from playOrPauseFromISR isr
  *  send current mp3 file pointed and
  *  fill vReadMp3File queue,
  *  automatically goes to next song in vector
@@ -210,7 +210,7 @@ extern void vPlayMp3Files(void *) {
 }
 
 /** vIncrVolumeOrList Task, @Priority = High
- *  @resumes from incrementVolumeFromISR task
+ *  @resumes from incrVolumeOrListFromISR task
  *  @state = PLAY, increases volume level by one
  *  @state = PAUSE, increase list index
  */
@@ -251,7 +251,7 @@ extern void vIncrVolumeOrList(void *) {
 }
 
 /** vDecrementVolume Task, @Priority = High
- *  @resumes from decrementVolumeFromISR task
+ *  @resumes from decrVolumeOrListFromISR task
  *  @state = PLAY; decreases volume level by one
  *  @state = PAUSE; decrement music list
  */
@@ -273,10 +273,9 @@ extern void vDecrVolumeOrList(void *) {
                     oled->printListArrow(listIndex);
                 } else {
                     listMultiplier > 0 ? listMultiplier-- :
-                     sd->getTotalFileLength() % 3 == 0 ? listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY - 1 :
-                                                        listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
+                        sd->getTotalFileLength() % MAX_LIST_ENTRY == 0 ? listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY - 1 :
+                                                                         listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
 
-//                    listMultiplier > 0 ? listMultiplier-- : listMultiplier = sd->getTotalFileLength() / MAX_LIST_ENTRY;
                     listIndex = TOP;
                     updateSongList(TOP);
                 }
@@ -287,7 +286,7 @@ extern void vDecrVolumeOrList(void *) {
 }
 
 /** vFastForwardOrSelect Task, @Priority = High
- *  @resumes from decrementVolumeFromISR task
+ *  @resumes from fastForwardOrSelectFromISR task
  *  @state = PLAY; set play rate to 1x/4x normal speed
  *  @state = PAUSE; select and play song
  */
@@ -311,6 +310,12 @@ extern void vFastForwardOrSelect(void *) {
     }
 }
 
+/** vNextOrPrevious Task, @Priority = High
+ *  @resumes from nextOrPreviousFromISR task
+ *  @state = PLAY; play next song on list
+ *  @state = PAUSE; play previous song on list
+ */
+
 extern void vNextOrPrevious(void *) {
     for (;;) {
         xSemaphoreTake(xSemaphore[1][SW_P2_4], portMAX_DELAY);
@@ -329,19 +334,17 @@ extern void vNextOrPrevious(void *) {
                         if (listMultiplier) {
                             listMultiplier--;
                             listIndex = BOT;
-                            updateSongList(BOT);
                         } else {
-                            sd->getTotalFileLength() % 3 == 0 ? listMultiplier = (sd->getTotalFileLength() / MAX_LIST_ENTRY) - 1 :
-                                                                listMultiplier = (sd->getTotalFileLength() / MAX_LIST_ENTRY);
+                            sd->getTotalFileLength() % MAX_LIST_ENTRY == 0 ? listMultiplier = (sd->getTotalFileLength() / MAX_LIST_ENTRY) - 1 :
+                                                                             listMultiplier = (sd->getTotalFileLength() / MAX_LIST_ENTRY);
                             listIndex = TOP;
                             sd->setMp3Index(listMultiplier * MAX_LIST_ENTRY);
-                            updateSongList(TOP);
                         }
+                        updateSongList(listIndex);
                     }
                     xSemaphoreGive(xSemaphore[1][SW_P2_2]);
                     break;
-                default:
-                    break;
+                default: break;
             }
         }
     }
