@@ -1,6 +1,7 @@
 # MP3-Player
-CMPE 146 - FreeRTOS
+LPC1758 ARM-Cortex M3 driving audio/sd/oled co-processing units. Interrupt driven design for pausing/playing/selecting/fast-forwarding/volume adjustments.
 
+Audio Encoder/Decoder over SPI:
 [VS1053b](https://www.sparkfun.com/datasheets/Components/SMD/vs1053.pdf)<br>
-[HM-10](http://fab.cba.mit.edu/classes/863.15/doc/tutorials/programming/bluetooth/bluetooth40_en.pdf)<br>
+OLED 132x64 over I2C:
 [SH1106](https://www.velleman.eu/downloads/29/infosheets/sh1106_datasheet.pdf)
